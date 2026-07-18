@@ -193,15 +193,20 @@ def alerts_cycle(cfg, state, poster, force):
     actual = [i for i in items if i["status"].lower() == "actual"]
     wanted = [i for i in actual if not regions or
               any(r in i["title"] + i["summary"] for r in regions)]
+    wanted_ids = {i["id"] for i in wanted}
     if st["bootstrapped"]:
-        to_post = [i for i in wanted if i["id"] not in st["seen"]]
+        to_post = [i for i in wanted if i["id"] not in st["seen"]][:FLOOD_CAP]
     else:
-        to_post = [i for i in wanted if _recent(i["updated"])]
+        to_post = [i for i in wanted if _recent(i["updated"])][:FLOOD_CAP]
         st["bootstrapped"] = True
+        wanted_ids = set()  # first run swallows the whole backlog
+    posted_ids = {i["id"] for i in to_post}
+    # overflow stays unseen so the next cycle catches up
     st["seen"].extend(
-        i["id"] for i in actual if i["id"] not in st["seen"])
+        i["id"] for i in actual if i["id"] not in st["seen"]
+        and (i["id"] in posted_ids or i["id"] not in wanted_ids))
     del st["seen"][:-2000]
-    for i in list(reversed(to_post))[:FLOOD_CAP]:
+    for i in reversed(to_post):
         poster.post("🚨【%s】\n%s\n%s" % (i["title"], i["summary"], i["link"]))
 
 

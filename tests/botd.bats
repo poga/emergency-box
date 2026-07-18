@@ -144,3 +144,35 @@ teardown_file() {
   [ "$status" -eq 0 ]
   [ "$(count_body_matches "$OPTOK" "$aid" "🚨")" -eq "$before" ]
 }
+
+@test "burst alerts defer beyond flood cap to the next cycle" {
+  conf3="$BATS_FILE_TMPDIR/bots3.ini"
+  state3="$BATS_FILE_TMPDIR/botd-state3.json"
+  write_bots_ini "$conf3" "$state3"
+  run python3 "$BATS_TEST_DIRNAME/../services/botd.py" \
+    --config "$conf3" --once
+  [ "$status" -eq 0 ]
+  ts=$(date -u '+%Y-%m-%dT%H:%M:%S+00:00')
+  {
+    printf '<?xml version="1.0" encoding="UTF-8"?>\n'
+    printf '<feed xmlns="http://www.w3.org/2005/Atom"\n'
+    printf '      xmlns:cap="urn:oasis:names:tc:emergency:cap:1.1">\n'
+    for n in $(seq 12 -1 1); do
+      printf '<entry><id>BURST_%04d</id><title>突發測試%d</title>' "$n" "$n"
+      printf '<updated>%s</updated>' "$ts"
+      printf '<link href="https://example.com/cap/burst%d"/>' "$n"
+      printf '<summary>連續警報測試</summary>'
+      printf '<cap:status>Actual</cap:status></entry>\n'
+    done
+    printf '</feed>\n'
+  } >"$FIXDIR/ncdr.xml"
+  aid=$(room_id_by_name "$OPTOK" alerts)
+  run python3 "$BATS_TEST_DIRNAME/../services/botd.py" \
+    --config "$conf3" --once
+  [ "$status" -eq 0 ]
+  [ "$(count_body_matches "$OPTOK" "$aid" "突發測試")" -eq 10 ]
+  run python3 "$BATS_TEST_DIRNAME/../services/botd.py" \
+    --config "$conf3" --once
+  [ "$status" -eq 0 ]
+  [ "$(count_body_matches "$OPTOK" "$aid" "突發測試")" -eq 12 ]
+}
