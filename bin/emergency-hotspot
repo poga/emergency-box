@@ -1,0 +1,49 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+# shellcheck disable=SC1091
+source lib/common.sh 2>/dev/null || source /opt/emergency-box/lib/common.sh
+PREFIX=/opt/emergency-box
+NAT=/Library/Preferences/SystemConfiguration/com.apple.nat
+
+usage() {
+  cat <<'EOF'
+Usage: sudo emergency-hotspot up|down
+EXPERIMENTAL: makes this Mac broadcast the emergency wifi itself
+(Internet Sharing). Configure the network name once in
+System Settings > General > Sharing > Internet Sharing (from: Ethernet /
+any unused port, to: Wi-Fi) before first use.
+EOF
+}
+
+up() {
+  render_template config/dnsmasq-dns.conf.template \
+    "$PREFIX/config/dnsmasq-hotspot.conf" "BOX_IP=192.168.2.1"
+  /opt/homebrew/sbin/dnsmasq \
+    --conf-file="$PREFIX/config/dnsmasq-hotspot.conf" \
+    --port=53535 --listen-address=127.0.0.1 \
+    --pid-file="$PREFIX/run/dnsmasq-hotspot.pid"
+  defaults write "$NAT" NAT -dict-add Enabled -int 1
+  launchctl kickstart -k system/com.apple.InternetSharing
+  echo "rdr pass on bridge100 inet proto { tcp udp } from any to any port 53 -> 127.0.0.1 port 53535" |
+    pfctl -a emergencybox -f - 2>/dev/null
+  pfctl -e 2>/dev/null || true
+  echo "Hotspot up: phones join the shared network; portal at any URL."
+}
+
+down() {
+  pfctl -a emergencybox -F all 2>/dev/null || true
+  defaults write "$NAT" NAT -dict-add Enabled -int 0
+  launchctl kickstart -k system/com.apple.InternetSharing 2>/dev/null || true
+  # shellcheck disable=SC2015
+  [ -f "$PREFIX/run/dnsmasq-hotspot.pid" ] &&
+    kill "$(cat "$PREFIX/run/dnsmasq-hotspot.pid")" 2>/dev/null || true
+  rm -f "$PREFIX/run/dnsmasq-hotspot.pid"
+}
+
+case ${1:-} in
+  up) [ "$(id -u)" -eq 0 ] || { echo "needs root" >&2; exit 1; }; up ;;
+  down) [ "$(id -u)" -eq 0 ] || { echo "needs root" >&2; exit 1; }; down ;;
+  --help|-h) usage ;;
+  *) usage >&2; exit 2 ;;
+esac

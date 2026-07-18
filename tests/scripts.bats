@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 @test "emergency scripts show usage with --help" {
-  for s in emergency-on emergency-off emergency-status; do
+  for s in emergency-on emergency-off emergency-status emergency-hotspot; do
     run "$BATS_TEST_DIRNAME/../bin/$s" --help
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage"* ]]
