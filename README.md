@@ -1,48 +1,42 @@
 # Emergency Box
 
-## 1. What this is
+A chat room that lives on your wifi and keeps working when the internet
+dies. An Apple Silicon Mac runs the chat ([chatto](https://github.com/chattocorp/chatto))
+on your normal home network — the router is never reconfigured, and
+there is nothing to switch on in an emergency. People use it every day
+at **http://chat.local**, so they already know how to reach it when it
+matters. As long as the router and the Mac have power, the chat works.
 
-An always-on chat room for your wifi that keeps working when the
-internet dies. There is nothing to activate in an emergency — it runs
-every day, on the network you already use, so people already know how
-to reach it when it matters.
+## Install (once, needs internet)
 
-An Apple Silicon Mac runs the chat ([chatto](https://github.com/chattocorp/chatto))
-on your normal home wifi. The router is never reconfigured. As long as
-the router and the Mac both have power, the chat works — before,
-during, and after an internet outage.
-
-## 2. One-command setup (needs internet once)
+Requires an Apple Silicon Mac with [Homebrew](https://brew.sh).
 
 ```bash
 git clone <repo> && cd emergency-box && sudo ./install.sh
 ```
 
+This installs caddy + chatto via brew, lays out `/opt/emergency-box`,
+starts 4 always-on launchd services (they survive reboots), and creates
+the chat admin account — credentials land in
+`/opt/emergency-box/config/operator-credentials.txt`; save them.
+
 **LLM-agent variant:** point your coding agent at this repo and say:
 *follow README.md to install, then run the test suite.*
 
-Requires an Apple Silicon Mac and [Homebrew](https://brew.sh) already
-installed. `install.sh` installs caddy and chatto (plus jq, bats-core,
-shellcheck for testing) via brew, lays out `/opt/emergency-box`,
-installs and starts 4 always-on launchd services, pre-authorizes caddy
-and chatto with the application firewall, and creates the chat admin
-("operator") account. Credentials are written to
-`/opt/emergency-box/config/operator-credentials.txt` — save them
-somewhere safe. Internet is only needed for this one step.
+## Use it
 
-After install:
+- **Chat:** http://chat.local — **Sign up:** http://chat.local/join
+- New people: join the wifi, open **chat.local**, tap **Create
+  account**, pick a name and password, then **Sign in**.
+- Old Android phones that can't resolve `.local`: use the QR / plain-IP
+  fallback (`http://<mac-ip>/join`) printed on the sign
+  ([docs/sign.md](docs/sign.md)) — everything works the same over IP.
+- **When the internet dies: do nothing.** Keep the Mac plugged in and
+  awake (`caffeinate -s` in a terminal, or lid open) — a sleeping Mac
+  is a sleeping chat room.
 
-- **Chat:** http://chat.local
-- **Sign up:** http://chat.local/join
-
-## 3. Set a DHCP reservation
-
-One-time router step. The Mac's IP can change over time (e.g. after a
-router reboot), and the printed sign (`docs/sign.md`) has a fallback
-link baked in as plain text — a DHCP reservation keeps that fallback
-valid indefinitely instead of going stale.
-
-Find the Mac's current wifi IP and MAC address:
+**One-time router step:** give the Mac a DHCP reservation so the
+printed IP fallback never goes stale. Find its wifi IP + MAC:
 
 ```bash
 dev=$(networksetup -listallhardwareports | awk '/Hardware Port: Wi-Fi/{getline; print $2; exit}')
@@ -50,103 +44,46 @@ ipconfig getifaddr "$dev"
 networksetup -getmacaddress "$dev"
 ```
 
-(Or: System Settings > Network > Wi-Fi > Details.)
+then bind them in the router's DHCP reservation / static lease setting.
 
-Log into the router's admin page (address + default password are
-usually on a sticker on the router), find the DHCP reservation /
-static lease setting, and bind the Mac's MAC address to its current
-IP. Save/reboot the router if it asks.
+## Verify it works (once, end-to-end)
 
-## 4. How people join
+1. Phone on the wifi → `http://chat.local/join` → create an account →
+   sign in → chat UI loads.
+2. Second device joins the same way; send a message each direction and
+   confirm both arrive.
+3. Restart the Mac. Re-run `/opt/emergency-box/bin/status` until every
+   line reads `[ok]` — no manual steps in between. Confirm history
+   survived and messages still flow.
+4. Unplug the router's WAN cable (internet dead, router powered). Send
+   another message both ways — it still works. Plug the WAN back in.
 
-1. Phone joins the household wifi like normal.
-2. Go to **http://chat.local**, tap **Create account** (or **Sign in** if
-   already registered).
-3. Pick a username and password, tap **Create account**. On success, tap
-   **Sign in** and log in with the new account.
-4. Old Android phones/browsers that can't resolve `.local` names: use
-   the QR code or `http://<mac-ip>/join` fallback printed on the sign
-   (`docs/sign.md`) instead — both the join page and the chat itself
-   work the same over the plain IP.
-5. Chat admin login is in
-   `/opt/emergency-box/config/operator-credentials.txt`.
+## Troubleshooting
 
-## 5. When the internet dies
+`/opt/emergency-box/bin/status` is the diagnostic. For any `[!!]` line:
 
-Nothing to do. While the router and this Mac have power, the chat
-stays up — there is no mode to switch on.
+- **daemon … not loaded** — re-run `sudo ./install.sh` (safe to
+  repeat), or inspect
+  `sudo launchctl print system/org.emergencybox.<name>`.
+- **chatto / joind not responding** — check that service's log in
+  `/opt/emergency-box/log/`.
+- **caddy not serving on :80 / portal not serving** — another local web
+  server likely holds port 80 (the installer names it); free it and
+  re-run install. Caddy owns port 80 here permanently, by design.
+- **chat.local not resolving** — check
+  `/opt/emergency-box/log/bonjour.log`; on old Androids this is
+  expected — use the IP fallback from the sign.
 
-Keep the Mac powered and awake: plug it in, and either run
-`caffeinate -s` in a terminal or keep the lid open, so it can't sleep.
-A sleeping Mac is a sleeping chat room.
-
-## 6. Smoke checklist (run once after install, full cycle)
-
-Do this end-to-end before trusting the box. Each step names what to
-actually observe — don't just run the command.
-
-1. On a phone already on the household wifi, go to
-   `http://chat.local/join`. Confirm the join page loads.
-2. Pick a username and password, tap **Create account**. Confirm
-   "Account ready" appears.
-3. Tap **Sign in**, log in. Confirm the chat UI loads.
-4. From a second device on the same wifi (another phone, or a laptop
-   browser), join and sign in the same way, then send a message.
-   Confirm it appears on the first phone, and a reply sent back lands
-   too — both directions.
-5. Restart the Mac (simulating a power blip). Wait for it to finish
-   booting — no manual step needed after that.
-6. Run `/opt/emergency-box/bin/status` and keep re-running it until
-   every line reads `[ok]`, or it clearly stalls — don't declare
-   success on a fixed timer.
-7. On both devices, confirm the earlier messages are still in the
-   room, then send one more message each way to confirm chat still
-   works post-reboot.
-8. Unplug the WAN/internet cable from the router (leave the router and
-   Mac powered) — this simulates the internet dying.
-9. Send another message between the two devices. Confirm it still
-   arrives: the chat never depended on the WAN link.
-10. Plug the WAN cable back in.
-
-## 7. Troubleshooting
-
-`/opt/emergency-box/bin/status` is the single diagnostic entry point.
-Line by line:
-
-- **`daemon chatto/joind/caddy/bonjour not loaded`** — that launchd
-  service isn't running; re-run `sudo ./install.sh` (safe to repeat)
-  or inspect `sudo launchctl print system/org.emergencybox.<name>`.
-- **`chatto not responding`** — check
-  `/opt/emergency-box/log/chatto.log`.
-- **`joind not responding`** — check
-  `/opt/emergency-box/log/joind.log`.
-- **`caddy not serving on :80`** / **`portal not serving`** — port 80
-  is likely taken by something else on the Mac (another local web
-  server); free it and re-run install, or check
-  `/opt/emergency-box/log/caddy.log`. Caddy owns port 80 on this Mac
-  permanently, by design.
-- **`chat.local not resolving (bonjour)`** — check
-  `/opt/emergency-box/log/bonjour.log`. This is expected on some older
-  Android phones that don't support `.local` (mDNS) names in the
-  browser — use the QR/IP fallback on the sign (`docs/sign.md`)
-  instead; the chat and join page both work the same over plain IP.
-
-## 8. Uninstall
+## Uninstall
 
 ```bash
 sudo ./uninstall.sh
 ```
 
-Stops and removes the 4 launchd services. Chat history stays in
-`/opt/emergency-box/data` unless you agree to the prompt to delete
-`/opt/emergency-box` entirely. Homebrew packages (caddy, chatto) are
-left installed.
+Removes the 4 services; chat history stays in `/opt/emergency-box/data`
+unless you accept the delete prompt. Brew packages are left installed.
 
-## 9. Design notes
+## Design notes
 
-Full design rationale and decisions:
-
-- [`docs/superpowers/specs/2026-07-18-coexist-redesign-design.md`](docs/superpowers/specs/2026-07-18-coexist-redesign-design.md)
-  — current: always-on, coexists with the normal wifi.
-- [`docs/superpowers/specs/2026-07-18-emergency-box-design.md`](docs/superpowers/specs/2026-07-18-emergency-box-design.md)
-  — superseded: the earlier network-takeover design.
+- [current design — always-on, coexists with normal wifi](docs/superpowers/specs/2026-07-18-coexist-redesign-design.md)
+- [superseded — the earlier network-takeover design](docs/superpowers/specs/2026-07-18-emergency-box-design.md)
