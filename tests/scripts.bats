@@ -24,9 +24,11 @@
 
 @test "bonjour publisher makes chat.local resolve (best effort)" {
   source "$BATS_TEST_DIRNAME/../lib/common.sh"
-  ip=$(ipconfig getifaddr "$(detect_wifi_device)" 2>/dev/null || true)
+  dev=$(route -n get default 2>/dev/null | awk '/interface:/{print $2}' || true)
+  [ -n "$dev" ] || dev=$(detect_wifi_device 2>/dev/null || true)
+  ip=$(ipconfig getifaddr "$dev" 2>/dev/null || true)
   if [ -z "$ip" ]; then
-    skip "no wifi IP on this machine; cannot exercise dns-sd"
+    skip "no IP on any candidate interface; cannot exercise dns-sd"
   fi
   "$BATS_TEST_DIRNAME/../services/bonjour.sh" &
   pid=$!
