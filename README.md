@@ -164,11 +164,11 @@ step names what to actually observe — don't just run the command.
 sudo ./uninstall.sh
 ```
 
-If emergency mode was left active (or a prior activation crashed), it
-first restores normal wifi DHCP/DNS on a best-effort basis, then removes
-the launchd daemons. Chat history stays in `/opt/emergency-box/data`
-unless you agree to the prompt to delete `/opt/emergency-box` entirely.
-Homebrew packages are left installed.
+Removes the launchd daemons, then restores normal wifi DHCP/DNS on a
+best-effort basis (a no-op if emergency mode wasn't active). Chat
+history stays in `/opt/emergency-box/data` unless you agree to the
+prompt to delete `/opt/emergency-box` entirely. Homebrew packages are
+left installed.
 
 ## 9. Design notes
 

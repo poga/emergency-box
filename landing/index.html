@@ -33,7 +33,7 @@
 <p class="tag">You are connected. This network has no internet — it hosts a
 local chat room for everyone nearby.</p>
 
-<form class="card" id="signup" onsubmit="event.preventDefault(); go();">
+<form class="card" id="signup">
   <p class="big">Create your account</p>
   <label for="login">Pick a username</label>
   <input id="login" autocapitalize="none" autocorrect="off"
@@ -119,6 +119,9 @@ async function go() {
     $('go').disabled = false;
   }
 }
+
+// not onsubmit=: the form's named-getter would shadow global `go` there.
+$('signup').addEventListener('submit', e => { e.preventDefault(); go(); });
 </script>
 </body>
 </html>
