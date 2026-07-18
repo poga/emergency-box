@@ -1,0 +1,22 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+# shellcheck disable=SC1091
+source lib/common.sh 2>/dev/null || source /opt/emergency-box/lib/common.sh
+case ${1:-} in
+  --help|-h) echo "Usage: sudo emergency-off"; exit 0 ;;
+  '') ;;
+  *) echo "Usage: sudo emergency-off" >&2; exit 2 ;;
+esac
+[ "$(id -u)" -eq 0 ] || { echo "needs root: sudo $0" >&2; exit 1; }
+
+for l in dnsmasq caddy chatto mailpit caffeinate; do
+  launchctl bootout "system/org.emergencybox.$l" 2>/dev/null || true
+done
+bin/emergency-hotspot down 2>/dev/null || true
+svc=$(detect_wifi_service)
+networksetup -setdhcp "$svc"
+networksetup -setdnsservers "$svc" Empty
+pmset -a disablesleep 0
+rm -f /opt/emergency-box/run/active
+echo "Emergency mode off; '$svc' restored to DHCP."

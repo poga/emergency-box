@@ -1,0 +1,31 @@
+#!/bin/bash
+# shellcheck disable=SC2015,SC1091
+set -euo pipefail
+cd "$(dirname "$0")/.."
+source lib/common.sh 2>/dev/null || source /opt/emergency-box/lib/common.sh
+case ${1:-} in
+  --help|-h) echo "Usage: emergency-status"; exit 0 ;;
+esac
+PREFIX=/opt/emergency-box
+ok() { printf '  [ok] %s\n' "$1"; }
+bad() { printf '  [!!] %s\n' "$1"; FAILED=1; }
+FAILED=0
+
+[ -f "$PREFIX/run/active" ] &&
+  echo "State: ACTIVE since $(cat "$PREFIX/run/active")" ||
+  echo "State: inactive"
+for l in chatto mailpit dnsmasq caddy caffeinate; do
+  launchctl print "system/org.emergencybox.$l" >/dev/null 2>&1 &&
+    ok "daemon $l loaded" || bad "daemon $l not loaded"
+done
+ip=$(ipconfig getifaddr "$(detect_wifi_device)" 2>/dev/null || true)
+[ "$ip" = "10.87.0.1" ] && ok "wifi IP is 10.87.0.1" || bad "wifi IP is ${ip:-none}"
+curl -fsS --max-time 3 http://127.0.0.1:8080/healthz >/dev/null 2>&1 &&
+  ok "chatto healthy" || bad "chatto not responding"
+curl -fsS --max-time 3 -H 'Host: captive.apple.com' http://127.0.0.1/ 2>/dev/null |
+  grep -qi emergency && ok "portal serving" || bad "portal not serving"
+dig +short +time=2 +tries=1 probe.example @10.87.0.1 2>/dev/null |
+  grep -qx 10.87.0.1 && ok "wildcard DNS answering" || bad "wildcard DNS silent"
+leases=$(grep -c . "$PREFIX/data/dnsmasq.leases" 2>/dev/null || echo 0)
+echo "  DHCP leases: $leases device(s)"
+exit "$FAILED"

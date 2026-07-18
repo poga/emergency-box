@@ -1,0 +1,72 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+# shellcheck disable=SC1091
+source lib/common.sh 2>/dev/null || source /opt/emergency-box/lib/common.sh
+
+PREFIX=/opt/emergency-box
+HOTSPOT=0 NOSLEEP=0
+usage() {
+  cat <<'EOF'
+Usage: sudo emergency-on [--hotspot] [--no-sleep]
+Activates the emergency chat box: static IP + DHCP/DNS/portal/chat daemons.
+  --hotspot   EXPERIMENTAL: the Mac broadcasts the wifi itself
+  --no-sleep  also disable lid-closed sleep (pmset disablesleep 1)
+EOF
+}
+while [ $# -gt 0 ]; do
+  case $1 in
+    --hotspot) HOTSPOT=1; shift ;;
+    --no-sleep) NOSLEEP=1; shift ;;
+    --help|-h) usage; exit 0 ;;
+    *) usage >&2; exit 2 ;;
+  esac
+done
+[ "$(id -u)" -eq 0 ] || { echo "needs root: sudo $0" >&2; exit 1; }
+
+svc=$(detect_wifi_service)
+echo "==> Static IP 10.87.0.1 on '$svc'"
+networksetup -setmanual "$svc" 10.87.0.1 255.255.255.0 10.87.0.1
+networksetup -setdnsservers "$svc" 10.87.0.1
+
+echo "==> Starting daemons"
+daemons=(chatto mailpit caddy caffeinate dnsmasq)
+if [ "$HOTSPOT" = 1 ]; then
+  bin/emergency-hotspot up   # Task 6; provides its own DNS arrangement
+  daemons=(chatto mailpit caddy caffeinate)
+fi
+for l in "${daemons[@]}"; do
+  launchctl bootstrap system "/Library/LaunchDaemons/org.emergencybox.$l.plist" \
+    2>/dev/null || launchctl kickstart "system/org.emergencybox.$l"
+done
+[ "$NOSLEEP" = 1 ] && pmset -a disablesleep 1
+date > "$PREFIX/run/active"
+
+echo "==> Self-test"
+fail() { echo "SELF-TEST FAILED: $1 (see $PREFIX/log/)" >&2; exit 1; }
+deadline=$((SECONDS + 45))
+until curl -fsS --max-time 2 http://127.0.0.1:8080/healthz >/dev/null 2>&1; do
+  ((SECONDS < deadline)) || fail "chatto not healthy on :8080"
+  sleep 1
+done
+curl -fsS --max-time 5 --resolve chat.lan:80:127.0.0.1 \
+  http://chat.lan/healthz | grep -q ok || fail "caddy proxy for chat.lan"
+curl -fsS --max-time 5 -H 'Host: captive.apple.com' http://127.0.0.1/ |
+  grep -qi emergency || fail "portal page on :80"
+curl -fsS --max-time 5 --resolve mail.lan:80:127.0.0.1 \
+  http://mail.lan/api/v1/info >/dev/null || fail "mailpit via mail.lan"
+if [ "$HOTSPOT" = 0 ]; then
+  dig +short +time=2 +tries=2 "probe$RANDOM.example" @10.87.0.1 |
+    grep -qx 10.87.0.1 || fail "wildcard DNS on 10.87.0.1"
+fi
+
+ssid=$(networksetup -getairportnetwork "$(detect_wifi_device)" |
+  sed 's/^[^:]*: //' || true)
+cat <<EOF
+
+  EMERGENCY BOX ACTIVE
+  Wifi network : ${ssid:-<join your bridge-mode AP>}
+  Chat         : http://chat.lan   (phones: just join the wifi)
+  Mail codes   : http://mail.lan
+  Deactivate   : sudo emergency-off
+EOF
