@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Emergency Chat</title>
+<title>Join Emergency Chat</title>
 <style>
   :root { color-scheme: light dark; }
   * { box-sizing: border-box; margin: 0; }
@@ -23,15 +23,14 @@
   button:disabled { opacity: .5; }
   a { color: #b91c1c; }
   #status { margin-top: .8rem; font-size: .95rem; min-height: 1.4rem; }
-  #done, #fallback { display: none; }
+  #done { display: none; }
   .big { font-size: 1.2rem; font-weight: 700; }
-  .hint { font-size: .85rem; opacity: .75; margin-top: .5rem; }
 </style>
 </head>
 <body>
 <h1>Emergency Chat</h1>
-<p class="tag">You are connected. This network has no internet — it hosts a
-local chat room for everyone nearby.</p>
+<p class="tag">A chat room for everyone on this wifi. It keeps working even
+when the internet is down.</p>
 
 <form class="card" id="signup">
   <p class="big">Create your account</p>
@@ -46,82 +45,44 @@ local chat room for everyone nearby.</p>
 
 <div class="card" id="done">
   <p class="big">✅ Account ready</p>
-  <p>Open <a href="http://chat.lan">chat.lan</a> in your browser (Safari or
-  Chrome, not this popup) and sign in with your username and password.</p>
-  <p class="hint">If this page is a wifi popup, tap Done/Cancel first and
-  choose “Use Without Internet”, then open your browser.</p>
+  <p><a href="/">Open the chat</a> and sign in with your username and
+  password.</p>
 </div>
 
 <div class="card">
-  <p>Already have an account? Go to
-  <a href="http://chat.lan"><b>chat.lan</b></a></p>
-</div>
-
-<div class="card" id="fallback">
-  <p class="big">Manual registration</p>
-  <p>Automatic signup failed. In your browser: open
-  <a href="http://chat.lan/register">chat.lan/register</a>, use any email
-  ending in <b>@chat.lan</b>, then read your 6-digit code at
-  <a href="http://mail.lan">mail.lan</a>.</p>
+  <p>Already have an account? <a href="/">Open the chat</a></p>
 </div>
 
 <script>
 const $ = id => document.getElementById(id);
 const status = m => { $('status').textContent = m; };
 
-async function post(path, body) {
-  const r = await fetch(path, { method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body) });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
-  return data;
-}
-
-async function pollCode(email) {
-  const q = encodeURIComponent('to:"' + email + '"');
-  for (let i = 0; i < 20; i++) {
-    try {
-      const s = await (await fetch('/mailapi/api/v1/search?query=' + q)).json();
-      const id = s.messages && s.messages[0] && s.messages[0].ID;
-      if (id) {
-        const m = await (await fetch('/mailapi/api/v1/message/' + id)).json();
-        const hit = (m.Text || '').match(/\b(\d{6})\b/);
-        if (hit) return hit[1];
-      }
-    } catch (e) { /* keep polling */ }
-    await new Promise(r => setTimeout(r, 1500));
-  }
-  throw new Error('No code arrived — the username may be taken.');
-}
-
 async function go() {
   const login = $('login').value.trim().toLowerCase();
   const pw = $('pw').value;
-  if (!/^[a-z0-9._-]{2,32}$/.test(login)) { status('Username: 2–32 letters/numbers.'); return; }
+  if (!/^[a-z0-9._-]{2,32}$/.test(login)) { status('Username: 2-32 letters/numbers.'); return; }
   if (pw.length < 8) { status('Password needs 8+ characters.'); return; }
   $('go').disabled = true;
+  status('Creating your account…');
   try {
-    const email = login + '@chat.lan';
-    status('Requesting account…');
-    await post('/auth/register', { email });
-    status('Fetching your code…');
-    const code = await pollCode(email);
-    status('Verifying…');
-    const v = await post('/auth/register/verify-code', { email, code });
-    await post('/auth/register/complete', { token: v.completionToken,
-      login, password: pw, passwordConfirmation: pw });
+    const r = await fetch('/joinapi', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login, password: pw }) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
     $('signup').style.display = 'none';
     $('done').style.display = 'block';
   } catch (e) {
     status('Failed: ' + e.message);
-    $('fallback').style.display = 'block';
     $('go').disabled = false;
   }
 }
 
-// not onsubmit=: the form's named-getter would shadow global `go` there.
-$('signup').addEventListener('submit', e => { e.preventDefault(); go(); });
+// inline onsubmit would let the form's named controls shadow go()
+document.getElementById('signup').addEventListener('submit', e => {
+  e.preventDefault();
+  go();
+});
 </script>
 </body>
 </html>

@@ -1,40 +1,53 @@
 #!/usr/bin/env bats
 load helpers
 
+CADDY_URL="http://127.0.0.1:18080"
+
 setup_file() {
-  export EBOX_TEST_DIR CADDY_URL="http://127.0.0.1:18080"
+  export EBOX_TEST_DIR
   EBOX_TEST_DIR=$(mktemp -d)
   start_chatto_stack "$EBOX_TEST_DIR"
+  require_port_free 8081
+  JOIND_CHATTO=$(command -v chatto) \
+    JOIND_CONFIG="$EBOX_TEST_DIR/chatto.toml" \
+    python3 "$BATS_TEST_DIRNAME/../services/joind.py" \
+    >"$EBOX_TEST_DIR/joind.log" 2>&1 &
+  echo $! >"$EBOX_TEST_DIR/joind.pid"
+  require_port_free 18080
   EBOX_HTTP_PORT=18080 EBOX_ROOT="$BATS_TEST_DIRNAME/.." \
     caddy start --config "$BATS_TEST_DIRNAME/../config/Caddyfile" \
     --adapter caddyfile --pidfile "$EBOX_TEST_DIR/caddy.pid"
-  wait_for_url "$CADDY_URL" 15
+  wait_for_url "$CADDY_URL/healthz" 15
 }
 
 teardown_file() {
   kill "$(cat "$EBOX_TEST_DIR/caddy.pid")" 2>/dev/null || true
+  kill "$(cat "$EBOX_TEST_DIR/joind.pid")" 2>/dev/null || true
   stop_chatto_stack "$EBOX_TEST_DIR"
 }
 
-@test "host chat.lan proxies to chatto" {
-  run curl -fsS -H 'Host: chat.lan' "$CADDY_URL/healthz"
+@test "default route reaches chatto" {
+  run curl -fsS "$CADDY_URL/healthz"
   echo "$output" | jq -e '.status == "ok"'
 }
 
-@test "captive probe host gets portal page, not Success" {
-  run curl -fsS -H 'Host: captive.apple.com' "$CADDY_URL/hotspot-detect.html"
-  [[ "$output" == *"Emergency"* ]]
-  [[ "$output" != *"<BODY>Success</BODY>"* ]]
-}
-
-@test "any other host and path gets portal page" {
-  run curl -fsS -H 'Host: connectivitycheck.gstatic.com' "$CADDY_URL/generate_204"
+@test "/join serves the portal page" {
+  run curl -fsS "$CADDY_URL/join"
   [[ "$output" == *"Emergency"* ]]
 }
 
-@test "portal host /auth/* reaches chatto same-origin" {
-  run curl -sS -o /dev/null -w '%{http_code}' -X POST \
-    -H 'Host: whatever.example' -H 'Content-Type: application/json' \
-    -d '{}' "$CADDY_URL/auth/register"
-  [ "$output" = "403" ]
+@test "/join/anything still serves the portal page" {
+  run curl -fsS "$CADDY_URL/join/whatever"
+  [[ "$output" == *"Emergency"* ]]
+}
+
+@test "/joinapi reaches joind" {
+  run curl -s -o /dev/null -w '%{http_code}' -X POST "$CADDY_URL/joinapi" \
+    -H 'Content-Type: application/json' -d '{}'
+  [ "$output" = "400" ]
+}
+
+@test "chatto UI is the front page" {
+  run curl -s -o /dev/null -w '%{http_code}' "$CADDY_URL/"
+  [ "$output" = "200" ]
 }

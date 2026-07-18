@@ -7,19 +7,16 @@
 http://:{$EBOX_HTTP_PORT:80} {
 	log
 
-	@chat host chat.lan
-	@mail host mail.lan
-	@auth path /auth/*
-
 	route {
-		reverse_proxy @chat 127.0.0.1:8080
-		reverse_proxy @mail 127.0.0.1:8025
-		reverse_proxy @auth 127.0.0.1:8080
-		handle_path /mailapi/* {
-			reverse_proxy 127.0.0.1:8025
+		handle /joinapi {
+			rewrite * /join
+			reverse_proxy 127.0.0.1:8081
 		}
-		root * {$EBOX_ROOT:/opt/emergency-box}/landing
-		try_files {path} /index.html
-		file_server
+		handle /join* {
+			root * {$EBOX_ROOT:/opt/emergency-box}/landing
+			rewrite * /index.html
+			file_server
+		}
+		reverse_proxy 127.0.0.1:8080
 	}
 }
