@@ -34,6 +34,11 @@ the chat admin account — credentials land in
 - **When the internet dies: do nothing.** Keep the Mac plugged in and
   awake (`caffeinate -s` in a terminal, or lid open) — a sleeping Mac
   is a sleeping chat room.
+- **No live voice/video calls.** Browsers only allow mic/camera access
+  over HTTPS, which on an offline LAN would mean installing a custom
+  certificate on every phone (and running a separate LiveKit media
+  server) — deliberately out of scope. Instead, record a clip with the
+  camera app and attach it in chat; videos up to 25 MB play inline.
 
 **One-time router step:** give the Mac a DHCP reservation so the
 printed IP fallback never goes stale. Find its wifi IP + MAC:
