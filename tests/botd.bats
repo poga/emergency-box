@@ -106,3 +106,41 @@ teardown_file() {
   [ "$(count_body_matches "$OPTOK" "$nid" "新聞更新")" -eq "$before_n" ]
   [ "$(count_body_matches "$OPTOK" "$wid" "天氣預報")" -eq "$before_w" ]
 }
+
+@test "alerts bootstrap posts only recent Actual alerts" {
+  aid=$(room_id_by_name "$OPTOK" alerts)
+  wait_for_room_message "$OPTOK" "$aid" "地震" 15
+  [ "$(count_body_matches "$OPTOK" "$aid" "🚨")" -eq 2 ]
+  [ "$(count_body_matches "$OPTOK" "$aid" "過期的歷史警報")" -eq 0 ]
+  [ "$(count_body_matches "$OPTOK" "$aid" "非實際警報")" -eq 0 ]
+}
+
+@test "a new alert in the feed posts exactly once" {
+  source "$BATS_TEST_DIRNAME/../lib/common.sh"
+  ts=$(date -u '+%Y-%m-%dT%H:%M:%S+00:00')
+  render_template "$BATS_TEST_DIRNAME/fixtures/ncdr-2.xml.template" \
+    "$FIXDIR/ncdr.xml" "TS=$ts"
+  run python3 "$BATS_TEST_DIRNAME/../services/botd.py" \
+    --config "$CONF" --once
+  [ "$status" -eq 0 ]
+  aid=$(room_id_by_name "$OPTOK" alerts)
+  wait_for_room_message "$OPTOK" "$aid" "海上警報" 15
+  [ "$(count_body_matches "$OPTOK" "$aid" "海上警報")" -eq 1 ]
+  run python3 "$BATS_TEST_DIRNAME/../services/botd.py" \
+    --config "$CONF" --once
+  [ "$(count_body_matches "$OPTOK" "$aid" "海上警報")" -eq 1 ]
+}
+
+@test "region keywords filter alerts" {
+  conf2="$BATS_FILE_TMPDIR/bots2.ini"
+  state2="$BATS_FILE_TMPDIR/botd-state2.json"
+  write_bots_ini "$conf2" "$state2"
+  printf '\n' >>"$conf2"
+  sed -i '' 's/^regions =$/regions = 金門/' "$conf2"
+  aid=$(room_id_by_name "$OPTOK" alerts)
+  before=$(count_body_matches "$OPTOK" "$aid" "🚨")
+  run python3 "$BATS_TEST_DIRNAME/../services/botd.py" \
+    --config "$conf2" --once
+  [ "$status" -eq 0 ]
+  [ "$(count_body_matches "$OPTOK" "$aid" "🚨")" -eq "$before" ]
+}

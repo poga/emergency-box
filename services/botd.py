@@ -172,7 +172,41 @@ def news_cycle(cfg, state, poster, force):
         poster.post("📰 新聞更新\n" + "\n".join(lines))
 
 
-CYCLES = (("weather", weather_cycle), ("news", news_cycle))
+def _recent(ts):
+    try:
+        then = datetime.fromisoformat(ts)
+        now = datetime.now(timezone.utc).astimezone()
+        return now - then <= timedelta(hours=24)
+    except (ValueError, TypeError):
+        return False
+
+
+def alerts_cycle(cfg, state, poster, force):
+    st = state.setdefault(
+        "alerts", {"seen": [], "bootstrapped": False, "last_run": 0})
+    if not force and time.time() - st["last_run"] < cfg.getint(
+            "alerts", "interval"):
+        return
+    st["last_run"] = time.time()
+    regions = cfg.get("alerts", "regions").split()
+    items = parse_feed(fetch(cfg.get("alerts", "feed"), state))
+    actual = [i for i in items if i["status"].lower() == "actual"]
+    wanted = [i for i in actual if not regions or
+              any(r in i["title"] + i["summary"] for r in regions)]
+    if st["bootstrapped"]:
+        to_post = [i for i in wanted if i["id"] not in st["seen"]]
+    else:
+        to_post = [i for i in wanted if _recent(i["updated"])]
+        st["bootstrapped"] = True
+    st["seen"].extend(
+        i["id"] for i in actual if i["id"] not in st["seen"])
+    del st["seen"][:-2000]
+    for i in list(reversed(to_post))[:FLOOD_CAP]:
+        poster.post("🚨【%s】\n%s\n%s" % (i["title"], i["summary"], i["link"]))
+
+
+CYCLES = (("weather", weather_cycle), ("news", news_cycle),
+          ("alerts", alerts_cycle))
 
 
 def run_cycle(cfg, state, posters, force=False):
