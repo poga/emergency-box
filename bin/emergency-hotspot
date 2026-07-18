@@ -17,23 +17,26 @@ EOF
 }
 
 up() {
-  render_template config/dnsmasq-dns.conf.template \
-    "$PREFIX/config/dnsmasq-hotspot.conf" "BOX_IP=192.168.2.1"
+  tmpl=config/dnsmasq-dns.conf.template
+  [ -f "$tmpl" ] || tmpl=$PREFIX/config/dnsmasq-dns.conf.template
+  render_template "$tmpl" "$PREFIX/config/dnsmasq-hotspot.conf" \
+    "BOX_IP=192.168.2.1"
   /opt/homebrew/sbin/dnsmasq \
     --conf-file="$PREFIX/config/dnsmasq-hotspot.conf" \
     --port=53535 --listen-address=127.0.0.1 \
     --pid-file="$PREFIX/run/dnsmasq-hotspot.pid"
   defaults write "$NAT" NAT -dict-add Enabled -int 1
   launchctl kickstart -k system/com.apple.InternetSharing
+  # com.apple/* is the wildcard macOS's default pf.conf evaluates.
   echo "rdr pass on bridge100 inet proto { tcp udp } from any to any port 53 -> 127.0.0.1 port 53535" |
-    pfctl -a emergencybox -f - 2>/dev/null
+    pfctl -a com.apple/emergencybox -f - 2>/dev/null
   pfctl -e 2>/dev/null || true
   echo "Hotspot up: phones join the shared network; portal at any URL."
 }
 
 down() {
-  pfctl -a emergencybox -F all 2>/dev/null || true
-  defaults write "$NAT" NAT -dict-add Enabled -int 0
+  pfctl -a com.apple/emergencybox -F all 2>/dev/null || true
+  defaults write "$NAT" NAT -dict-add Enabled -int 0 2>/dev/null || true
   launchctl kickstart -k system/com.apple.InternetSharing 2>/dev/null || true
   # shellcheck disable=SC2015
   [ -f "$PREFIX/run/dnsmasq-hotspot.pid" ] &&

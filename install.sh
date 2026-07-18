@@ -49,6 +49,8 @@ render_template config/dnsmasq.conf.template "$PREFIX/config/dnsmasq.conf" \
   "CONFIG_DIR=$PREFIX/config" "WIFI_DEVICE=$wifi_device" \
   "DATA_DIR=$PREFIX/data" "LOG_DIR=$PREFIX/log"
 cp config/Caddyfile "$PREFIX/config/Caddyfile"
+# raw templates too, so installed scripts can re-render standalone
+cp config/*.template "$PREFIX/config/"
 cp landing/index.html "$PREFIX/landing/index.html"
 cp lib/common.sh "$PREFIX/lib/common.sh"
 cp bin/emergency-* "$PREFIX/bin/" 2>/dev/null || true
