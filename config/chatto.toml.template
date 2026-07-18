@@ -22,6 +22,9 @@ signing_secret = '@ASSETS_SECRET@'
 [auth]
 direct_registration = false
 
+[video]
+enabled = true
+
 [nats.embedded]
 enabled = true
 data_dir = '@DATA_DIR@/nats'
