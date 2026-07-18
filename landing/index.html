@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Emergency Chat</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: -apple-system, system-ui, sans-serif; line-height: 1.5;
+         max-width: 26rem; margin: 0 auto; padding: 1.5rem 1rem; }
+  h1 { font-size: 1.6rem; margin-bottom: .25rem; }
+  .tag { color: #b45309; font-weight: 600; margin-bottom: 1.25rem; }
+  .card { border: 1px solid #8884; border-radius: 12px; padding: 1rem;
+          margin-bottom: 1rem; }
+  label { display: block; font-size: .9rem; font-weight: 600; margin: .6rem 0 .2rem; }
+  input { width: 100%; font-size: 1.1rem; padding: .55rem .7rem;
+          border: 1px solid #8886; border-radius: 8px; background: transparent;
+          color: inherit; }
+  button { width: 100%; font-size: 1.1rem; font-weight: 700; padding: .7rem;
+           margin-top: 1rem; border: 0; border-radius: 8px;
+           background: #b91c1c; color: #fff; }
+  button:disabled { opacity: .5; }
+  a { color: #b91c1c; }
+  #status { margin-top: .8rem; font-size: .95rem; min-height: 1.4rem; }
+  #done, #fallback { display: none; }
+  .big { font-size: 1.2rem; font-weight: 700; }
+  .hint { font-size: .85rem; opacity: .75; margin-top: .5rem; }
+</style>
+</head>
+<body>
+<h1>Emergency Chat</h1>
+<p class="tag">You are connected. This network has no internet — it hosts a
+local chat room for everyone nearby.</p>
+
+<div class="card" id="signup">
+  <p class="big">Create your account</p>
+  <label for="login">Pick a username</label>
+  <input id="login" autocapitalize="none" autocorrect="off"
+         placeholder="e.g. maria" maxlength="32">
+  <label for="pw">Pick a password (8+ characters)</label>
+  <input id="pw" type="password" minlength="8" maxlength="128">
+  <button id="go">Create account</button>
+  <p id="status"></p>
+</div>
+
+<div class="card" id="done">
+  <p class="big">✅ Account ready</p>
+  <p>Open <a href="http://chat.lan">chat.lan</a> in your browser (Safari or
+  Chrome, not this popup) and sign in with your username and password.</p>
+  <p class="hint">If this page is a wifi popup, tap Done/Cancel first and
+  choose “Use Without Internet”, then open your browser.</p>
+</div>
+
+<div class="card">
+  <p>Already have an account? Go to
+  <a href="http://chat.lan"><b>chat.lan</b></a></p>
+</div>
+
+<div class="card" id="fallback">
+  <p class="big">Manual registration</p>
+  <p>Automatic signup failed. In your browser: open
+  <a href="http://chat.lan/register">chat.lan/register</a>, use any email
+  ending in <b>@chat.lan</b>, then read your 6-digit code at
+  <a href="http://mail.lan">mail.lan</a>.</p>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const status = m => { $('status').textContent = m; };
+
+async function post(path, body) {
+  const r = await fetch(path, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+  return data;
+}
+
+async function pollCode(email) {
+  const q = encodeURIComponent('to:"' + email + '"');
+  for (let i = 0; i < 20; i++) {
+    try {
+      const s = await (await fetch('/mailapi/api/v1/search?query=' + q)).json();
+      const id = s.messages && s.messages[0] && s.messages[0].ID;
+      if (id) {
+        const m = await (await fetch('/mailapi/api/v1/message/' + id)).json();
+        const hit = (m.Text || '').match(/\b(\d{6})\b/);
+        if (hit) return hit[1];
+      }
+    } catch (e) { /* keep polling */ }
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  throw new Error('No code arrived — the username may be taken.');
+}
+
+$('go').onclick = async () => {
+  const login = $('login').value.trim().toLowerCase();
+  const pw = $('pw').value;
+  if (!/^[a-z0-9._-]{2,32}$/.test(login)) { status('Username: 2–32 letters/numbers.'); return; }
+  if (pw.length < 8) { status('Password needs 8+ characters.'); return; }
+  $('go').disabled = true;
+  try {
+    const email = login + '@chat.lan';
+    status('Requesting account…');
+    await post('/auth/register', { email });
+    status('Fetching your code…');
+    const code = await pollCode(email);
+    status('Verifying…');
+    const v = await post('/auth/register/verify-code', { email, code });
+    await post('/auth/register/complete', { token: v.completionToken,
+      login, password: pw, passwordConfirmation: pw });
+    $('signup').style.display = 'none';
+    $('done').style.display = 'block';
+  } catch (e) {
+    status('Failed: ' + e.message);
+    $('fallback').style.display = 'block';
+    $('go').disabled = false;
+  }
+};
+</script>
+</body>
+</html>

@@ -41,9 +41,15 @@ start_chatto_stack() { # DIR ; starts real mailpit + chatto
   wait_for_url http://127.0.0.1:8025/api/v1/info 15
 }
 
-stop_chatto_stack() { # DIR
-  local dir=$1 f
+stop_chatto_stack() { # DIR ; kills stack, waits for exit so ports free up
+  local dir=$1 f pid deadline
   for f in "$dir"/*.pid; do
-    [ -f "$f" ] && kill "$(cat "$f")" 2>/dev/null || true
+    [ -f "$f" ] || continue
+    pid=$(cat "$f")
+    kill "$pid" 2>/dev/null || true
+    deadline=$((SECONDS + 10))
+    while kill -0 "$pid" 2>/dev/null && ((SECONDS < deadline)); do
+      sleep 0.2
+    done
   done
 }
