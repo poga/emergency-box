@@ -210,6 +210,17 @@ def alerts_cycle(cfg, state, poster, force):
         poster.post("🚨【%s】\n%s\n%s" % (i["title"], i["summary"], i["link"]))
 
 
+def connectivity_cycle(cfg, state, poster):
+    limit = cfg.getint("botd", "offline_after", fallback=600)
+    down = time.time() - state.get("last_success", 0) > limit
+    if down and not state.get("offline"):
+        state["offline"] = True
+        poster.post("⚠️ 對外網路已中斷，頻道內為最後已知資訊")
+    elif not down and state.get("offline"):
+        state["offline"] = False
+        poster.post("✅ 對外網路已恢復")
+
+
 CYCLES = (("weather", weather_cycle), ("news", news_cycle),
           ("alerts", alerts_cycle))
 
@@ -221,6 +232,11 @@ def run_cycle(cfg, state, posters, force=False):
         except Exception as e:  # one failing bot must not stall the others
             log("%s: %s" % (section, e))
             posters[section].reset()
+    try:
+        connectivity_cycle(cfg, state, posters["alerts"])
+    except Exception as e:  # chatto itself may be down; retry next tick
+        log("connectivity: %s" % e)
+        posters["alerts"].reset()
 
 
 def main():

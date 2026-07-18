@@ -176,3 +176,28 @@ teardown_file() {
   [ "$status" -eq 0 ]
   [ "$(count_body_matches "$OPTOK" "$aid" "突發測試")" -eq 12 ]
 }
+
+@test "offline notice posts exactly once while sources are dead" {
+  kill "$(cat "$STACK/httpfix.pid")" 2>/dev/null || true
+  sleep 2
+  aid=$(room_id_by_name "$OPTOK" alerts)
+  run python3 "$BATS_TEST_DIRNAME/../services/botd.py" \
+    --config "$CONF" --once
+  [ "$status" -eq 0 ]
+  wait_for_room_message "$OPTOK" "$aid" "對外網路已中斷" 15
+  run python3 "$BATS_TEST_DIRNAME/../services/botd.py" \
+    --config "$CONF" --once
+  [ "$(count_body_matches "$OPTOK" "$aid" "對外網路已中斷")" -eq 1 ]
+}
+
+@test "recovery notice posts when sources return" {
+  python3 -m http.server 18090 --directory "$FIXDIR" >/dev/null 2>&1 &
+  echo $! >"$STACK/httpfix.pid"
+  wait_for_url http://127.0.0.1:18090/openmeteo.json 10
+  run python3 "$BATS_TEST_DIRNAME/../services/botd.py" \
+    --config "$CONF" --once
+  [ "$status" -eq 0 ]
+  aid=$(room_id_by_name "$OPTOK" alerts)
+  wait_for_room_message "$OPTOK" "$aid" "對外網路已恢復" 15
+  [ "$(count_body_matches "$OPTOK" "$aid" "對外網路已恢復")" -eq 1 ]
+}
