@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>org.emergencybox.bonjour</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/opt/emergency-box/services/bonjour.sh</string>
+  </array>
+  <key>UserName</key><string>@EBOX_USER@</string>
+  <key>WorkingDirectory</key><string>/opt/emergency-box</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/opt/emergency-box/log/bonjour.log</string>
+  <key>StandardErrorPath</key><string>/opt/emergency-box/log/bonjour.log</string>
+</dict>
+</plist>

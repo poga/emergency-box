@@ -1,9 +1,0 @@
-conf-file=@CONFIG_DIR@/dnsmasq-dns.conf
-interface=@WIFI_DEVICE@
-bind-interfaces
-dhcp-range=10.87.0.50,10.87.0.250,255.255.255.0,12h
-dhcp-option=option:router,10.87.0.1
-dhcp-option=option:dns-server,10.87.0.1
-dhcp-authoritative
-dhcp-leasefile=@DATA_DIR@/dnsmasq.leases
-log-facility=@LOG_DIR@/dnsmasq.log
