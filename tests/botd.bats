@@ -87,3 +87,22 @@ teardown_file() {
   [ "$(count_body_matches "$OPTOK" "$wid" "26–33°C")" -ge 1 ]
   [ "$(count_body_matches "$OPTOK" "$wid" "降雨機率 100%")" -ge 1 ]
 }
+
+@test "botd --once posts one news digest from both feed formats" {
+  nid=$(room_id_by_name "$OPTOK" news)
+  wait_for_room_message "$OPTOK" "$nid" "新聞更新" 15
+  [ "$(count_body_matches "$OPTOK" "$nid" "無人機玩家不滿新增禁航區")" -eq 1 ]
+  [ "$(count_body_matches "$OPTOK" "$nid" "測試頭條一")" -eq 1 ]
+}
+
+@test "a second botd run reposts nothing" {
+  nid=$(room_id_by_name "$OPTOK" news)
+  wid=$(room_id_by_name "$OPTOK" weather)
+  before_n=$(count_body_matches "$OPTOK" "$nid" "新聞更新")
+  before_w=$(count_body_matches "$OPTOK" "$wid" "天氣預報")
+  run python3 "$BATS_TEST_DIRNAME/../services/botd.py" \
+    --config "$CONF" --once
+  [ "$status" -eq 0 ]
+  [ "$(count_body_matches "$OPTOK" "$nid" "新聞更新")" -eq "$before_n" ]
+  [ "$(count_body_matches "$OPTOK" "$wid" "天氣預報")" -eq "$before_w" ]
+}

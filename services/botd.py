@@ -115,7 +115,64 @@ def weather_cycle(cfg, state, poster, force):
     state.setdefault("weather", {})["last_slot"] = slot
 
 
-CYCLES = (("weather", weather_cycle),)
+def parse_feed(data):
+    """Atom entries or RSS 2.0 items, namespace-agnostic."""
+    def local(tag):
+        return tag.rsplit("}", 1)[-1]
+
+    items = []
+    for el in ET.fromstring(data).iter():
+        if local(el.tag) not in ("entry", "item"):
+            continue
+        it = {"id": "", "title": "", "link": "",
+              "summary": "", "status": "", "updated": ""}
+        for c in el:
+            t = local(c.tag)
+            text = (c.text or "").strip()
+            if t in ("id", "guid"):
+                it["id"] = text
+            elif t == "title":
+                it["title"] = text
+            elif t == "link":
+                it["link"] = text or c.get("href", "")
+            elif t in ("summary", "description"):
+                it["summary"] = text
+            elif t == "status":
+                it["status"] = text
+            elif t in ("updated", "pubDate"):
+                it["updated"] = text
+        if not it["id"]:
+            it["id"] = it["link"] or it["title"]
+        items.append(it)
+    return items
+
+
+def news_cycle(cfg, state, poster, force):
+    st = state.setdefault("news", {"seen": {}, "last_run": 0})
+    if not force and time.time() - st["last_run"] < cfg.getint(
+            "news", "interval"):
+        return
+    st["last_run"] = time.time()
+    max_items = cfg.getint("news", "max_items")
+    lines = []
+    for feed in cfg.get("news", "feeds").split():
+        try:
+            items = parse_feed(fetch(feed, state))
+        except Exception as e:  # a dead feed must not block the others
+            log("news %s: %s" % (feed, e))
+            continue
+        seen = st["seen"].setdefault(feed, [])
+        fresh = [i for i in items if i["id"] not in seen]
+        for i in fresh:
+            if len(lines) < max_items:
+                lines.append("・%s\n  %s" % (i["title"], i["link"]))
+        seen.extend(i["id"] for i in fresh)
+        del seen[:-500]
+    if lines:
+        poster.post("📰 新聞更新\n" + "\n".join(lines))
+
+
+CYCLES = (("weather", weather_cycle), ("news", news_cycle))
 
 
 def run_cycle(cfg, state, posters, force=False):
