@@ -89,7 +89,7 @@ actually observe — don't just run the command.
    `http://chat.local/join`. Confirm the join page loads.
 2. Pick a username and password, tap **Create account**. Confirm
    "Account ready" appears.
-3. Tap **Open the chat**, sign in. Confirm the chat UI loads.
+3. Tap **Sign in**, log in. Confirm the chat UI loads.
 4. From a second device on the same wifi (another phone, or a laptop
    browser), join and sign in the same way, then send a message.
    Confirm it appears on the first phone, and a reply sent back lands

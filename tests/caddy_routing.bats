@@ -36,12 +36,14 @@ teardown_file() {
 
 @test "/join serves the portal page" {
   run curl -fsS "$CADDY_URL/join"
-  [[ "$output" == *"Emergency"* ]]
+  [[ "$output" == *'id="signup"'* ]]
+  [[ "$output" == *"Pick a username"* ]]
 }
 
 @test "/join/anything still serves the portal page" {
   run curl -fsS "$CADDY_URL/join/whatever"
-  [[ "$output" == *"Emergency"* ]]
+  [[ "$output" == *'id="signup"'* ]]
+  [[ "$output" == *"Pick a username"* ]]
 }
 
 @test "/joinapi reaches joind" {
@@ -54,6 +56,7 @@ teardown_file() {
   run curl -fsS "$CADDY_URL/"
   [[ "$output" == *"Create account"* ]]
   [[ "$output" == *"Sign in"* ]]
+  [[ "$output" != *"Pick a username"* ]]
 }
 
 @test "/login still reaches chatto" {
