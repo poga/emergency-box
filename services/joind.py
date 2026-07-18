@@ -4,6 +4,7 @@ import json
 import os
 import re
 import subprocess
+import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -12,18 +13,21 @@ CONFIG = os.environ.get("JOIND_CONFIG", "/opt/emergency-box/config/chatto.toml")
 PORT = int(os.environ.get("JOIND_PORT", "8081"))
 LOGIN_RE = re.compile(r"^[a-z0-9._-]{2,32}$")
 BURST, REFILL = 10.0, 1.0
+MAX_BODY = 4096
 
 _bucket = {"tokens": BURST, "last": time.monotonic()}
+_bucket_lock = threading.Lock()
 
 
 def take_token():
-    now = time.monotonic()
-    _bucket["tokens"] = min(BURST, _bucket["tokens"] + (now - _bucket["last"]) * REFILL)
-    _bucket["last"] = now
-    if _bucket["tokens"] < 1.0:
-        return False
-    _bucket["tokens"] -= 1.0
-    return True
+    with _bucket_lock:
+        now = time.monotonic()
+        _bucket["tokens"] = min(BURST, _bucket["tokens"] + (now - _bucket["last"]) * REFILL)
+        _bucket["last"] = now
+        if _bucket["tokens"] < 1.0:
+            return False
+        _bucket["tokens"] -= 1.0
+        return True
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -43,10 +47,20 @@ class Handler(BaseHTTPRequestHandler):
             return self._reply(404, {"error": "not found"})
         if not take_token():
             return self._reply(429, {"error": "too many attempts; wait a moment"})
+        raw_len = self.headers.get("Content-Length")
         try:
-            length = int(self.headers.get("Content-Length") or 0)
-            body = json.loads(self.rfile.read(length) or b"{}")
+            length = int(raw_len) if raw_len is not None else 0
         except ValueError:
+            return self._reply(400, {"error": "invalid request"})
+        if length <= 0:
+            return self._reply(400, {"error": "invalid request"})
+        if length > MAX_BODY:
+            return self._reply(413, {"error": "request too large"})
+        try:
+            body = json.loads(self.rfile.read(length))
+        except ValueError:
+            return self._reply(400, {"error": "invalid request"})
+        if not isinstance(body, dict):
             return self._reply(400, {"error": "invalid request"})
         login = str(body.get("login", "")).strip().lower()
         password = str(body.get("password", ""))
@@ -62,6 +76,8 @@ class Handler(BaseHTTPRequestHandler):
                 input=password.encode(), capture_output=True, timeout=15)
         except subprocess.TimeoutExpired:
             return self._reply(502, {"error": "chat server is not responding - try again"})
+        except (FileNotFoundError, OSError):
+            return self._reply(502, {"error": "chat server had a problem - try again"})
         if r.returncode == 0:
             return self._reply(201, {"ok": True, "login": login})
         err = (r.stderr + r.stdout).decode(errors="replace").lower()

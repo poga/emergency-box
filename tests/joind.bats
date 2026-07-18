@@ -65,3 +65,28 @@ teardown_file() {
     -d '{"email":"x@chat.lan"}'
   [ "$output" = "403" ]
 }
+
+@test "non-dict json body returns 400" {
+  run curl -s -o /dev/null -w '%{http_code}' -X POST "$JOIND/join" \
+    -H 'Content-Type: application/json' -d '[1,2,3]'
+  [ "$output" = "400" ]
+}
+
+@test "oversized body returns 413" {
+  local payload
+  payload=$(python3 -c 'print("x" * 5000)')
+  run curl -s -o /dev/null -w '%{http_code}' -X POST "$JOIND/join" \
+    -H 'Content-Type: application/json' -d "$payload"
+  [ "$output" = "413" ]
+}
+
+# keep last: drains the rate-limit bucket, would skew earlier tests
+@test "rate limit trips under rapid requests" {
+  local i codes=""
+  for i in $(seq 1 14); do
+    codes+=$(curl -s -o /dev/null -w '%{http_code} ' -X POST "$JOIND/join" \
+      -H 'Content-Type: application/json' \
+      -d '{"login":"a","password":"short"}')
+  done
+  [[ "$codes" == *"429"* ]]
+}
