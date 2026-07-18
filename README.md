@@ -2,11 +2,15 @@
 
 ## 1. What this is
 
-Turn an Apple Silicon Mac plus any home router (switched to bridge/AP
-mode) into an offline emergency chat room. No internet, no cell service,
-no extra hardware — phones just join the wifi and chat with everyone
-else nearby. Everything needed is installed once, in advance, while you
-still have internet; activation later needs none.
+An always-on chat room for your wifi that keeps working when the
+internet dies. There is nothing to activate in an emergency — it runs
+every day, on the network you already use, so people already know how
+to reach it when it matters.
+
+An Apple Silicon Mac runs the chat ([chatto](https://github.com/chattocorp/chatto))
+on your normal home wifi. The router is never reconfigured. As long as
+the router and the Mac both have power, the chat works — before,
+during, and after an internet outage.
 
 ## 2. One-command setup (needs internet once)
 
@@ -14,149 +18,118 @@ still have internet; activation later needs none.
 git clone <repo> && cd emergency-box && sudo ./install.sh
 ```
 
-Requires an Apple Silicon Mac and [Homebrew](https://brew.sh) already
-installed. `install.sh` installs dnsmasq/caddy/mailpit/chatto (plus
-jq, bats-core, shellcheck, bind) via brew, lays out
-`/opt/emergency-box`, installs 5 launchd daemons disabled — enabled
-only while emergency mode is active — pre-authorizes them with the
-application firewall, and creates the chat admin ("operator") account.
-Credentials are written to
-`/opt/emergency-box/config/operator-credentials.txt` — save them
-somewhere safe.
-
 **LLM-agent variant:** point your coding agent at this repo and say:
 *follow README.md to install, then run the test suite.*
 
-## 3. When emergency strikes
+Requires an Apple Silicon Mac and [Homebrew](https://brew.sh) already
+installed. `install.sh` installs caddy and chatto (plus jq, bats-core,
+shellcheck for testing) via brew, lays out `/opt/emergency-box`,
+installs and starts 4 always-on launchd services, pre-authorizes them
+with the application firewall, and creates the chat admin ("operator")
+account. Credentials are written to
+`/opt/emergency-box/config/operator-credentials.txt` — save them
+somewhere safe. Internet is only needed for this one step.
 
-1. Power on the router in bridge mode (see section 5).
-2. On this Mac, join the emergency AP's wifi network from the normal
-   Wi-Fi menu — dnsmasq needs the Mac already associated before it can
-   bind DHCP/DNS on that network.
-3. From the cloned repo directory:
-   ```bash
-   sudo bin/emergency-on --yes
-   ```
-   `emergency-on` normally prompts you to confirm the wifi network name
-   before taking it over with DHCP+DNS; `--yes` skips that prompt since
-   you already confirmed it in step 2. This sets a static IP, starts the
-   five daemons, then runs a 5-layer self-test (chatto health, chat.lan
-   routing, portal page, mail.lan, wildcard DNS). It only prints
-   `EMERGENCY BOX ACTIVE` — with the wifi name, `chat.lan`, `mail.lan` —
-   after every layer passes.
-4. Lid-closed / running unattended: add `--no-sleep` (also disables
-   sleep via `pmset`; a `caffeinate` daemon already blocks idle sleep
-   while active).
-5. No second router available: `sudo bin/emergency-on --hotspot --yes`
-   makes the Mac broadcast the network itself (EXPERIMENTAL). It needs a
-   one-time setup first: System Settings > General > Sharing > Internet
-   Sharing, share from Ethernet (or any unused port) to Wi-Fi.
-6. If the self-test fails, it prints which layer and tells you to run
-   `sudo bin/emergency-off` to roll back before retrying — see
-   Troubleshooting.
+After install:
+
+- **Chat:** http://chat.local
+- **Sign up:** http://chat.local/join
+
+## 3. Set a DHCP reservation
+
+One-time router step. The Mac's IP can change over time (e.g. after a
+router reboot), and the printed sign (section 4, `docs/sign.md`) has a
+fallback link baked in as plain text — a DHCP reservation keeps that
+fallback valid indefinitely instead of going stale.
+
+Find the Mac's current wifi IP and MAC address:
+
+```bash
+dev=$(networksetup -listallhardwareports | awk '/Hardware Port: Wi-Fi/{getline; print $2; exit}')
+ipconfig getifaddr "$dev"
+networksetup -getmacaddress "$dev"
+```
+
+(Or: System Settings > Network > Wi-Fi > Details.)
+
+Log into the router's admin page (address + default password are
+usually on a sticker on the router), find the DHCP reservation /
+static lease setting, and bind the Mac's MAC address to its current
+IP. Save/reboot the router if it asks.
 
 ## 4. How people join
 
-1. Phone joins the wifi network you just announced.
-2. A captive-portal popup appears (iOS: a wifi sign-in sheet; Android: a
-   "sign in to network" notification) showing the **Emergency Chat**
-   page.
-3. Pick a username and password, tap **Create account**. The page
-   automates chatto's email-code registration behind the scenes.
-4. On success it says "Account ready" — leave the popup (iOS: tap
-   Done/Cancel, choose "Use Without Internet") and open **Safari or
-   Chrome**, not the popup itself, then go to **http://chat.lan** and
-   sign in.
-5. If automatic signup fails, the page shows a fallback: register
-   manually at `chat.lan/register` with any `@chat.lan` email, then read
-   the 6-digit code at **http://mail.lan**.
-6. Chat admin login is in
+1. Phone joins the household wifi like normal.
+2. Go to **http://chat.local/join**, pick a username and password, tap
+   **Create account**.
+3. On success, tap **Open the chat**, then sign in at
+   **http://chat.local**.
+4. Old Android phones/browsers that can't resolve `.local` names: use
+   the QR code or `http://<mac-ip>/join` fallback printed on the sign
+   (`docs/sign.md`) instead — both the join page and the chat itself
+   work the same over the plain IP.
+5. Chat admin login is in
    `/opt/emergency-box/config/operator-credentials.txt`.
 
-## 5. Router bridge-mode recipe
+## 5. When the internet dies
 
-Every router differs, but the pattern is the same:
+Nothing to do. While the router and this Mac have power, the chat
+stays up — there is no mode to switch on.
 
-1. Log into the router's admin page (address + default password are
-   usually on a sticker on the router itself).
-2. Find the WAN/Internet mode setting and switch it to **Bridge
-   mode** (or **Access Point mode** — wording varies by brand). This
-   turns off the router's own DHCP server and NAT/routing.
-3. Note the SSID (and password, if any) the router is still
-   broadcasting for wifi — that's the network people join.
-4. Save/reboot the router.
-5. **Verify:** with the Mac powered off (before `emergency-on`), join
-   that SSID from a phone. It should get no usable IP (a `169.254.x.x`
-   self-assigned address, or nothing) — that confirms the router isn't
-   handing out its own DHCP anymore. The Mac supplies DHCP/DNS once
-   activated.
+Keep the Mac powered and awake: plug it in, and either run
+`caffeinate -s` in a terminal or keep the lid open, so it can't sleep.
+A sleeping Mac is a sleeping chat room.
 
 ## 6. Smoke checklist (run once after install, full cycle)
 
-Do this end-to-end before trusting the box in a real emergency. Each
-step names what to actually observe — don't just run the command.
+Do this end-to-end before trusting the box. Each step names what to
+actually observe — don't just run the command.
 
-1. Power on the bridge-mode AP.
-2. On this Mac, join the emergency AP's wifi network.
-3. `sudo bin/emergency-on --yes` (skips the wifi take-over confirmation
-   prompt — you already confirmed the AP network in step 2) — wait for
-   `EMERGENCY BOX ACTIVE`. If you see `SELF-TEST FAILED` instead, stop
-   and read Troubleshooting.
-4. Join the printed wifi network from an iPhone. Confirm a sign-in
-   popup shows the Emergency Chat page within a few seconds.
-5. Create an account in the popup. Confirm it shows "Account ready".
-6. Tap Done/Cancel, open Safari, go to `http://chat.lan`, sign in.
-   Confirm the chat UI loads.
-7. Join the same network from an Android phone. Confirm Android shows a
-   "no internet, stay connected?" prompt — tap to stay connected.
-8. Create an account via the notification/portal page, then sign in at
-   `http://chat.lan` on Android. Confirm the chat UI loads there too.
-9. In a shared room, send a message from the iPhone and confirm it
-   appears on the Android phone, then send one back the other way.
-   Confirm both directions land.
-10. Reboot the Mac (simulating a mid-emergency power blip). Wait for it
-    to finish booting.
-11. Run `bin/emergency-status` and keep re-running it until every line
-    reads `[ok]` (daemons, wifi IP, chatto, portal, DNS) or it clearly
-    stalls — don't declare success on a fixed timer.
-12. On both phones, confirm the earlier messages are still in the room,
-    then send one more message each way to confirm chat still works
-    post-reboot.
-13. `sudo bin/emergency-off`. Confirm it prints that wifi was restored
-    to DHCP.
-14. Confirm the Mac's normal wifi/internet works again, e.g.
-    `dig google.com` resolves real public IPs (not `10.87.0.1`).
+1. On a phone already on the household wifi, go to
+   `http://chat.local/join`. Confirm the join page loads.
+2. Pick a username and password, tap **Create account**. Confirm
+   "Account ready" appears.
+3. Tap **Open the chat**, sign in. Confirm the chat UI loads.
+4. From a second device on the same wifi (another phone, or a laptop
+   browser), join and sign in the same way, then send a message.
+   Confirm it appears on the first phone, and a reply sent back lands
+   too — both directions.
+5. Restart the Mac (simulating a power blip). Wait for it to finish
+   booting — no manual step needed after that.
+6. Run `/opt/emergency-box/bin/status` and keep re-running it until
+   every line reads `[ok]`, or it clearly stalls — don't declare
+   success on a fixed timer.
+7. On both devices, confirm the earlier messages are still in the
+   room, then send one more message each way to confirm chat still
+   works post-reboot.
+8. Unplug the WAN/internet cable from the router (leave the router and
+   Mac powered) — this simulates the internet dying.
+9. Send another message between the two devices. Confirm it still
+   arrives: the chat never depended on the WAN link.
+10. Plug the WAN cable back in.
 
 ## 7. Troubleshooting
 
-- **Self-test failure on activation** — the message names the failing
-  layer:
-  - `chatto not healthy on :8080` — chatto didn't start; check
-    `/opt/emergency-box/log/chatto.log`.
-  - `caddy proxy for chat.lan` / `portal page on :80` — something else
-    is already bound to port 80 (a local dev server, another web
-    server); free the port and retry.
-  - `mailpit via mail.lan` — check `/opt/emergency-box/log/mailpit.log`.
-  - `wildcard DNS on 10.87.0.1` — something else is already bound to
-    port 53 (a VPN client's local DNS proxy is the usual culprit), or
-    this Mac isn't joined to the emergency wifi network; disconnect the
-    VPN or join the network and retry.
-  - After any failure: `sudo bin/emergency-off` cleans up partial state,
-    then try `sudo bin/emergency-on` again.
-- **`bin/emergency-status`** (no sudo needed) is the single diagnostic
-  entry point: daemon state, wifi IP, chatto/portal/DNS health, and the
-  DHCP lease count.
-- **Logs** live in `/opt/emergency-box/log/`: `chatto.log`,
-  `mailpit.log`, `caddy.log`, `dnsmasq.log` (DHCP/startup log, not
-  queries), `dnsmasq-daemon.log`.
-- **Android "no internet, stay connected?"** — expected; the network
-  genuinely has no internet. Tap to stay connected/keep the connection.
-- **iOS captive popup** — if it won't cooperate, tap Done or Cancel on
-  the popup, then open Safari yourself and go to `http://chat.lan`.
-- **`--hotspot` is EXPERIMENTAL** — Internet Sharing needs the one-time
-  System Settings pre-configuration (section 3) before first use, and
-  is generally less reliable than a real bridge-mode router. Prefer
-  section 5 when any second router/AP is available.
+`/opt/emergency-box/bin/status` is the single diagnostic entry point.
+Line by line:
+
+- **`daemon chatto/joind/caddy/bonjour not loaded`** — that launchd
+  service isn't running; re-run `sudo ./install.sh` (safe to repeat)
+  or inspect `sudo launchctl print system/org.emergencybox.<name>`.
+- **`chatto not responding`** — check
+  `/opt/emergency-box/log/chatto.log`.
+- **`joind not responding`** — check
+  `/opt/emergency-box/log/joind.log`.
+- **`caddy not serving on :80`** / **`portal not serving`** — port 80
+  is likely taken by something else on the Mac (another local web
+  server); free it and re-run install, or check
+  `/opt/emergency-box/log/caddy.log`. Caddy owns port 80 on this Mac
+  permanently, by design.
+- **`chat.local not resolving (bonjour)`** — check
+  `/opt/emergency-box/log/bonjour.log`. This is expected on some older
+  Android phones that don't support `.local` (mDNS) names in the
+  browser — use the QR/IP fallback on the sign (`docs/sign.md`)
+  instead; the chat and join page both work the same over plain IP.
 
 ## 8. Uninstall
 
@@ -164,13 +137,16 @@ step names what to actually observe — don't just run the command.
 sudo ./uninstall.sh
 ```
 
-Removes the launchd daemons, then restores normal wifi DHCP/DNS on a
-best-effort basis (a no-op if emergency mode wasn't active). Chat
-history stays in `/opt/emergency-box/data` unless you agree to the
-prompt to delete `/opt/emergency-box` entirely. Homebrew packages are
+Stops and removes the 4 launchd services. Chat history stays in
+`/opt/emergency-box/data` unless you agree to the prompt to delete
+`/opt/emergency-box` entirely. Homebrew packages (caddy, chatto) are
 left installed.
 
 ## 9. Design notes
 
 Full design rationale and decisions:
-[`docs/superpowers/specs/2026-07-18-emergency-box-design.md`](docs/superpowers/specs/2026-07-18-emergency-box-design.md).
+
+- [`docs/superpowers/specs/2026-07-18-coexist-redesign-design.md`](docs/superpowers/specs/2026-07-18-coexist-redesign-design.md)
+  — current: always-on, coexists with the normal wifi.
+- [`docs/superpowers/specs/2026-07-18-emergency-box-design.md`](docs/superpowers/specs/2026-07-18-emergency-box-design.md)
+  — superseded: the earlier network-takeover design.
