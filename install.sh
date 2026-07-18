@@ -92,9 +92,23 @@ if [ "$SYSTEM" = 1 ]; then
   failed=""
   for l in chatto joind caddy bonjour; do
     launchctl bootout "system/org.emergencybox.$l" 2>/dev/null || true
+    # bootout is async; bootstrapping mid-teardown fails with EIO
+    deadline=$((SECONDS + 20))
+    while launchctl print "system/org.emergencybox.$l" >/dev/null 2>&1; do
+      ((SECONDS < deadline)) || break
+      sleep 0.5
+    done
     launchctl enable "system/org.emergencybox.$l" 2>/dev/null || true
-    launchctl bootstrap system "/Library/LaunchDaemons/org.emergencybox.$l.plist" ||
-      failed="$failed $l"
+    ok=1
+    for _ in 1 2 3; do
+      if launchctl bootstrap system \
+        "/Library/LaunchDaemons/org.emergencybox.$l.plist" 2>/dev/null; then
+        ok=0
+        break
+      fi
+      sleep 2
+    done
+    [ "$ok" -eq 0 ] || failed="$failed $l"
   done
   if [ -n "$failed" ]; then
     echo "failed to start:$failed — check /Library/LaunchDaemons and" \
