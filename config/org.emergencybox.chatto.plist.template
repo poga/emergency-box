@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>org.emergencybox.chatto</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/chatto</string>
+    <string>run</string>
+    <string>-c</string>
+    <string>/opt/emergency-box/config/chatto.toml</string>
+  </array>
+  <key>UserName</key><string>@EBOX_USER@</string>
+  <key>WorkingDirectory</key><string>/opt/emergency-box/data</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/opt/emergency-box/log/chatto.log</string>
+  <key>StandardErrorPath</key><string>/opt/emergency-box/log/chatto.log</string>
+</dict>
+</plist>

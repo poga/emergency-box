@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>org.emergencybox.caddy</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/caddy</string>
+    <string>run</string>
+    <string>--config</string>
+    <string>/opt/emergency-box/config/Caddyfile</string>
+    <string>--adapter</string>
+    <string>caddyfile</string>
+  </array>
+  <key>WorkingDirectory</key><string>/opt/emergency-box/data</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/opt/emergency-box/log/caddy.log</string>
+  <key>StandardErrorPath</key><string>/opt/emergency-box/log/caddy.log</string>
+</dict>
+</plist>
