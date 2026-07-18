@@ -214,11 +214,11 @@ def connectivity_cycle(cfg, state, poster):
     limit = cfg.getint("botd", "offline_after", fallback=600)
     down = time.time() - state.get("last_success", 0) > limit
     if down and not state.get("offline"):
-        state["offline"] = True
         poster.post("⚠️ 對外網路已中斷，頻道內為最後已知資訊")
+        state["offline"] = True
     elif not down and state.get("offline"):
-        state["offline"] = False
         poster.post("✅ 對外網路已恢復")
+        state["offline"] = False
 
 
 CYCLES = (("weather", weather_cycle), ("news", news_cycle),
