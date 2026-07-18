@@ -21,11 +21,6 @@ teardown_file() {
   echo "$output" | jq -e '.status == "ok"'
 }
 
-@test "host mail.lan proxies to mailpit UI" {
-  run curl -fsS -H 'Host: mail.lan' "$CADDY_URL/api/v1/info"
-  [ "$status" -eq 0 ]
-}
-
 @test "captive probe host gets portal page, not Success" {
   run curl -fsS -H 'Host: captive.apple.com' "$CADDY_URL/hotspot-detect.html"
   [[ "$output" == *"Emergency"* ]]
@@ -41,10 +36,5 @@ teardown_file() {
   run curl -sS -o /dev/null -w '%{http_code}' -X POST \
     -H 'Host: whatever.example' -H 'Content-Type: application/json' \
     -d '{}' "$CADDY_URL/auth/register"
-  [ "$output" = "400" ]
-}
-
-@test "portal host /mailapi/* reaches mailpit API same-origin" {
-  run curl -fsS -H 'Host: whatever.example' "$CADDY_URL/mailapi/api/v1/info"
-  [ "$status" -eq 0 ]
+  [ "$output" = "403" ]
 }

@@ -17,28 +17,24 @@ require_port_free() {
   fi
 }
 
-start_chatto_stack() { # DIR ; starts real mailpit + chatto
+start_chatto_stack() { # DIR ; starts a real chatto
   local dir=$1
   require_port_free 8080 || return 1
-  require_port_free 1025 || return 1
-  require_port_free 8025 || return 1
   mkdir -p "$dir/data"
-  chmod 700 "$dir/data" # chatto refuses a group/other-accessible socket dir
-  mailpit --smtp 127.0.0.1:1025 --listen 127.0.0.1:8025 \
-    --database "$dir/data/mailpit.db" >"$dir/mailpit.log" 2>&1 &
-  echo $! >"$dir/mailpit.pid"
+  # chatto refuses a group/other-accessible socket dir
+  chmod 700 "$dir/data"
   # shellcheck source=lib/common.sh
   source "$BATS_TEST_DIRNAME/../lib/common.sh"
   render_template "$BATS_TEST_DIRNAME/../config/chatto.toml.template" \
     "$dir/chatto.toml" \
     "COOKIE_SECRET=$(gen_secret)" "CORE_SECRET=$(gen_secret)" \
     "ASSETS_SECRET=$(gen_secret)" "NATS_TOKEN=$(gen_secret)" \
-    "DATA_DIR=$dir/data" "SMTP_PORT=1025"
-  (cd "$dir" || exit
-   chatto run -c "$dir/chatto.toml" >"$dir/chatto.log" 2>&1 &
-   echo $! >"$dir/chatto.pid")
+    "DATA_DIR=$dir/data"
+  cd "$dir" || return 1
+  chatto run -c "$dir/chatto.toml" >"$dir/chatto.log" 2>&1 &
+  echo $! >"$dir/chatto.pid"
+  cd - >/dev/null || return 1
   wait_for_url http://127.0.0.1:8080/healthz 30
-  wait_for_url http://127.0.0.1:8025/api/v1/info 15
 }
 
 stop_chatto_stack() { # DIR ; kills stack, waits for exit so ports free up

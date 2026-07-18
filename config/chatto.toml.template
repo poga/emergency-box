@@ -20,14 +20,7 @@ secret_key = '@CORE_SECRET@'
 signing_secret = '@ASSETS_SECRET@'
 
 [auth]
-direct_registration = true
-
-[smtp]
-enabled = true
-host = '127.0.0.1'
-port = @SMTP_PORT@
-tls = 'opportunistic'
-from = 'registration@chat.lan'
+direct_registration = false
 
 [nats.embedded]
 enabled = true
