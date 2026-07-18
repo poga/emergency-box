@@ -5,13 +5,20 @@ source lib/common.sh
 
 PREFIX=/opt/emergency-box
 SYSTEM=1
+PREFIX_SET=0
 while [ $# -gt 0 ]; do
   case $1 in
-    --prefix) PREFIX=$2; shift 2 ;;
+    --prefix)
+      [ $# -ge 2 ] || { echo "--prefix requires a value" >&2; exit 2; }
+      PREFIX=$2; PREFIX_SET=1; shift 2 ;;
     --no-system) SYSTEM=0; shift ;;
     *) echo "unknown flag: $1" >&2; exit 2 ;;
   esac
 done
+if [ "$PREFIX_SET" = 1 ] && [ "$SYSTEM" = 1 ]; then
+  echo "custom prefix is test-only, use --no-system" >&2
+  exit 2
+fi
 
 [ "$(uname -sm)" = "Darwin arm64" ] || { echo "Apple Silicon macOS only" >&2; exit 1; }
 command -v brew >/dev/null || { echo "Homebrew required: https://brew.sh" >&2; exit 1; }
@@ -43,6 +50,8 @@ if [ ! -f "$PREFIX/config/chatto.toml" ]; then
     "DATA_DIR=$PREFIX/data" "SMTP_PORT=1025"
   chmod 600 "$PREFIX/config/chatto.toml"
 fi
+# chatto (running as EBOX_USER) must be able to read its own config
+chown "$EBOX_USER" "$PREFIX/config/chatto.toml"
 render_template config/dnsmasq-dns.conf.template \
   "$PREFIX/config/dnsmasq-dns.conf" "BOX_IP=10.87.0.1"
 render_template config/dnsmasq.conf.template "$PREFIX/config/dnsmasq.conf" \
@@ -53,9 +62,13 @@ cp config/Caddyfile "$PREFIX/config/Caddyfile"
 cp config/*.template "$PREFIX/config/"
 cp landing/index.html "$PREFIX/landing/index.html"
 cp lib/common.sh "$PREFIX/lib/common.sh"
-cp bin/emergency-* "$PREFIX/bin/" 2>/dev/null || true
+cp bin/emergency-* "$PREFIX/bin/"
 
 if [ "$SYSTEM" = 1 ]; then
+  if [ -f "$PREFIX/run/active" ]; then
+    echo "emergency mode is active; run sudo bin/emergency-off first" >&2
+    exit 1
+  fi
   echo "==> Installing launchd daemons (dormant until emergency-on)"
   for t in config/org.emergencybox.*.plist.template; do
     out="/Library/LaunchDaemons/$(basename "${t%.template}")"
@@ -67,9 +80,10 @@ if [ "$SYSTEM" = 1 ]; then
   # persistently disable so daemons stay dormant across reboots
   for l in chatto mailpit dnsmasq caddy caffeinate; do
     launchctl bootout "system/org.emergencybox.$l" 2>/dev/null || true
-    launchctl disable "system/org.emergencybox.$l"
+    launchctl disable "system/org.emergencybox.$l" || true
   done
   chown -R "$EBOX_USER" "$PREFIX/data" "$PREFIX/log"
+  chmod 700 "$PREFIX/data" # chatto refuses a group/other-accessible socket dir
 
   echo "==> Pre-authorizing binaries with the application firewall"
   fw=/usr/libexec/ApplicationFirewall/socketfilterfw

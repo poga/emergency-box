@@ -86,7 +86,7 @@ emergency-box/
 ├── install.sh             # one-time setup (the only step needing internet)
 ├── uninstall.sh           # clean removal from the host Mac
 ├── bin/
-│   ├── emergency-on       # activate (--hotspot, --no-sleep flags)
+│   ├── emergency-on       # activate (--hotspot, --no-sleep, --yes flags)
 │   ├── emergency-off      # deactivate, restore normal networking
 │   └── emergency-status   # daemons, IP, DNS answer, leases, chatto health
 ├── lib/common.sh          # shared: secrets, template render, wifi detection
@@ -106,12 +106,13 @@ emergency-box/
   chatto (`chattocorp/tap/chatto`); generate secrets and render configs;
   place plists; create the operator account; pre-authorize binaries with
   the application firewall. Everything needed later is cached locally.
-- **emergency-on**: static IP → `launchctl bootstrap` the five daemons →
-  state marker → self-test each layer → print one-screen status (SSID to
-  join, `chat.lan`). The caffeinate daemon prevents idle sleep while active;
+- **emergency-on**: confirm SSID takeover (skippable with `--yes`) →
+  static IP → `launchctl bootstrap` the five daemons → state marker →
+  self-test each layer → print one-screen status (SSID to join,
+  `chat.lan`). The caffeinate daemon prevents idle sleep while active;
   `--no-sleep` additionally applies `pmset disablesleep 1` for lid-closed use.
-- **emergency-off**: bootout daemons, restore Wi-Fi DHCP, revert pmset,
-  clear state. Re-runs cleanly after a crashed activation.
+- **emergency-off**: bootout daemons, restore Wi-Fi DHCP (best-effort),
+  revert pmset, clear state. Re-runs cleanly after a crashed activation.
 - **Reboot survival**: plists live in `/Library/LaunchDaemons`; an activated
   box that loses power comes back in emergency mode (static IP persists).
   Deactivation fully unloads, so normal days are unaffected.
@@ -124,9 +125,12 @@ emergency-box/
   wildcard DNS answering, `chat.lan` routing, chatto healthy) and names the
   culprit on failure (VPN DNS proxy on :53, dev server on :80). No silent
   half-activated state.
-- dnsmasq binds only to the Wi-Fi interface and only serves `10.87.0.x`,
-  which exists only under the emergency static IP — cannot poison a normal
-  network.
+- `emergency-on` shows the currently associated SSID and requires
+  interactive confirmation before taking it over with DHCP+DNS
+  (skippable with `--yes` once confirmed), and dnsmasq binds only to the
+  Wi-Fi interface and only serves `10.87.0.x`, which exists only under
+  the emergency static IP — bounding takeover to a network the operator
+  explicitly confirmed.
 - Phone quirks (Android "no internet, stay connected?", iOS popup behavior)
   are explained on the landing page where users encounter them.
 - README includes a generic "any router → bridge mode" recipe and how to

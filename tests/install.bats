@@ -2,7 +2,7 @@
 load helpers
 
 setup_file() {
-  export PREFIX
+  export PREFIX HOMEBREW_NO_AUTO_UPDATE=1
   PREFIX=$(mktemp -d)
   run "$BATS_TEST_DIRNAME/../install.sh" --prefix "$PREFIX" --no-system
   [ "$status" -eq 0 ]

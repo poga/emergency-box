@@ -5,24 +5,33 @@ cd "$(dirname "$0")/.."
 source lib/common.sh 2>/dev/null || source /opt/emergency-box/lib/common.sh
 
 PREFIX=/opt/emergency-box
-HOTSPOT=0 NOSLEEP=0
+HOTSPOT=0 NOSLEEP=0 YES=0
 usage() {
   cat <<'EOF'
-Usage: sudo emergency-on [--hotspot] [--no-sleep]
+Usage: sudo emergency-on [--hotspot] [--no-sleep] [--yes]
 Activates the emergency chat box: static IP + DHCP/DNS/portal/chat daemons.
   --hotspot   EXPERIMENTAL: the Mac broadcasts the wifi itself
   --no-sleep  also disable lid-closed sleep (pmset disablesleep 1)
+  --yes       skip the wifi take-over confirmation prompt
 EOF
 }
 while [ $# -gt 0 ]; do
   case $1 in
     --hotspot) HOTSPOT=1; shift ;;
     --no-sleep) NOSLEEP=1; shift ;;
+    --yes) YES=1; shift ;;
     --help|-h) usage; exit 0 ;;
     *) usage >&2; exit 2 ;;
   esac
 done
 [ "$(id -u)" -eq 0 ] || { echo "needs root: sudo $0" >&2; exit 1; }
+
+ssid=$(networksetup -getairportnetwork "$(detect_wifi_device)" |
+  sed 's/^[^:]*: //' || true)
+if [ "$YES" != 1 ]; then
+  read -rp "This will take over wifi network '${ssid:-<unknown>}' with DHCP+DNS. Continue? [y/N] " ans
+  [[ $ans == [yY] ]] || { echo "Aborted." >&2; exit 1; }
+fi
 
 svc=$(detect_wifi_service)
 echo "==> Static IP 10.87.0.1 on '$svc'"
@@ -61,12 +70,11 @@ curl -fsS --max-time 5 --resolve mail.lan:80:127.0.0.1 \
   http://mail.lan/api/v1/info >/dev/null || fail "mailpit via mail.lan"
 if [ "$HOTSPOT" = 0 ]; then
   dig +short +time=2 +tries=2 "probe$RANDOM.example" @10.87.0.1 |
-    grep -qx 10.87.0.1 || fail "wildcard DNS on 10.87.0.1"
+    grep -qx 10.87.0.1 ||
+    fail "wildcard DNS on 10.87.0.1 (is this Mac joined to the emergency wifi?)"
 fi
 date > "$PREFIX/run/active"
 
-ssid=$(networksetup -getairportnetwork "$(detect_wifi_device)" |
-  sed 's/^[^:]*: //' || true)
 cat <<EOF
 
   EMERGENCY BOX ACTIVE

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+# no `set` here: this file is sourced, and options would leak into the caller
 
 gen_secret() { openssl rand -hex 32; }
 

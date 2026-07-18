@@ -30,22 +30,28 @@ somewhere safe.
 ## 3. When emergency strikes
 
 1. Power on the router in bridge mode (see section 5).
-2. From the cloned repo directory:
+2. On this Mac, join the emergency AP's wifi network from the normal
+   Wi-Fi menu — dnsmasq needs the Mac already associated before it can
+   bind DHCP/DNS on that network.
+3. From the cloned repo directory:
    ```bash
-   sudo bin/emergency-on
+   sudo bin/emergency-on --yes
    ```
-   This sets a static IP, starts the five daemons, then runs a 5-layer
-   self-test (chatto health, chat.lan routing, portal page, mail.lan,
-   wildcard DNS). It only prints `EMERGENCY BOX ACTIVE` — with the wifi
-   name, `chat.lan`, `mail.lan` — after every layer passes.
-3. Lid-closed / running unattended: add `--no-sleep` (also disables
+   `emergency-on` normally prompts you to confirm the wifi network name
+   before taking it over with DHCP+DNS; `--yes` skips that prompt since
+   you already confirmed it in step 2. This sets a static IP, starts the
+   five daemons, then runs a 5-layer self-test (chatto health, chat.lan
+   routing, portal page, mail.lan, wildcard DNS). It only prints
+   `EMERGENCY BOX ACTIVE` — with the wifi name, `chat.lan`, `mail.lan` —
+   after every layer passes.
+4. Lid-closed / running unattended: add `--no-sleep` (also disables
    sleep via `pmset`; a `caffeinate` daemon already blocks idle sleep
    while active).
-4. No second router available: `sudo bin/emergency-on --hotspot` makes
-   the Mac broadcast the network itself (EXPERIMENTAL). It needs a
+5. No second router available: `sudo bin/emergency-on --hotspot --yes`
+   makes the Mac broadcast the network itself (EXPERIMENTAL). It needs a
    one-time setup first: System Settings > General > Sharing > Internet
    Sharing, share from Ethernet (or any unused port) to Wi-Fi.
-5. If the self-test fails, it prints which layer and tells you to run
+6. If the self-test fails, it prints which layer and tells you to run
    `sudo bin/emergency-off` to roll back before retrying — see
    Troubleshooting.
 
@@ -91,31 +97,34 @@ Do this end-to-end before trusting the box in a real emergency. Each
 step names what to actually observe — don't just run the command.
 
 1. Power on the bridge-mode AP.
-2. `sudo bin/emergency-on` — wait for `EMERGENCY BOX ACTIVE`. If you see
-   `SELF-TEST FAILED` instead, stop and read Troubleshooting.
-3. Join the printed wifi network from an iPhone. Confirm a sign-in
+2. On this Mac, join the emergency AP's wifi network.
+3. `sudo bin/emergency-on --yes` (skips the wifi take-over confirmation
+   prompt — you already confirmed the AP network in step 2) — wait for
+   `EMERGENCY BOX ACTIVE`. If you see `SELF-TEST FAILED` instead, stop
+   and read Troubleshooting.
+4. Join the printed wifi network from an iPhone. Confirm a sign-in
    popup shows the Emergency Chat page within a few seconds.
-4. Create an account in the popup. Confirm it shows "Account ready".
-5. Tap Done/Cancel, open Safari, go to `http://chat.lan`, sign in.
+5. Create an account in the popup. Confirm it shows "Account ready".
+6. Tap Done/Cancel, open Safari, go to `http://chat.lan`, sign in.
    Confirm the chat UI loads.
-6. Join the same network from an Android phone. Confirm Android shows a
+7. Join the same network from an Android phone. Confirm Android shows a
    "no internet, stay connected?" prompt — tap to stay connected.
-7. Create an account via the notification/portal page, then sign in at
+8. Create an account via the notification/portal page, then sign in at
    `http://chat.lan` on Android. Confirm the chat UI loads there too.
-8. In a shared room, send a message from the iPhone and confirm it
+9. In a shared room, send a message from the iPhone and confirm it
    appears on the Android phone, then send one back the other way.
    Confirm both directions land.
-9. Reboot the Mac (simulating a mid-emergency power blip). Wait for it
-   to finish booting.
-10. Run `emergency-status` and keep re-running it until every line
+10. Reboot the Mac (simulating a mid-emergency power blip). Wait for it
+    to finish booting.
+11. Run `bin/emergency-status` and keep re-running it until every line
     reads `[ok]` (daemons, wifi IP, chatto, portal, DNS) or it clearly
     stalls — don't declare success on a fixed timer.
-11. On both phones, confirm the earlier messages are still in the room,
+12. On both phones, confirm the earlier messages are still in the room,
     then send one more message each way to confirm chat still works
     post-reboot.
-12. `sudo bin/emergency-off`. Confirm it prints that wifi was restored
+13. `sudo bin/emergency-off`. Confirm it prints that wifi was restored
     to DHCP.
-13. Confirm the Mac's normal wifi/internet works again, e.g.
+14. Confirm the Mac's normal wifi/internet works again, e.g.
     `dig google.com` resolves real public IPs (not `10.87.0.1`).
 
 ## 7. Troubleshooting
@@ -129,16 +138,17 @@ step names what to actually observe — don't just run the command.
     server); free the port and retry.
   - `mailpit via mail.lan` — check `/opt/emergency-box/log/mailpit.log`.
   - `wildcard DNS on 10.87.0.1` — something else is already bound to
-    port 53 (a VPN client's local DNS proxy is the usual culprit);
-    disconnect it and retry.
+    port 53 (a VPN client's local DNS proxy is the usual culprit), or
+    this Mac isn't joined to the emergency wifi network; disconnect the
+    VPN or join the network and retry.
   - After any failure: `sudo bin/emergency-off` cleans up partial state,
     then try `sudo bin/emergency-on` again.
-- **`emergency-status`** (no sudo needed) is the single diagnostic
+- **`bin/emergency-status`** (no sudo needed) is the single diagnostic
   entry point: daemon state, wifi IP, chatto/portal/DNS health, and the
   DHCP lease count.
 - **Logs** live in `/opt/emergency-box/log/`: `chatto.log`,
-  `mailpit.log`, `caddy.log`, `dnsmasq.log` (query log),
-  `dnsmasq-daemon.log`.
+  `mailpit.log`, `caddy.log`, `dnsmasq.log` (DHCP/startup log, not
+  queries), `dnsmasq-daemon.log`.
 - **Android "no internet, stay connected?"** — expected; the network
   genuinely has no internet. Tap to stay connected/keep the connection.
 - **iOS captive popup** — if it won't cooperate, tap Done or Cancel on
@@ -154,9 +164,11 @@ step names what to actually observe — don't just run the command.
 sudo ./uninstall.sh
 ```
 
-Removes the launchd daemons. Chat history stays in
-`/opt/emergency-box/data` unless you agree to the prompt to delete
-`/opt/emergency-box` entirely. Homebrew packages are left installed.
+If emergency mode was left active (or a prior activation crashed), it
+first restores normal wifi DHCP/DNS on a best-effort basis, then removes
+the launchd daemons. Chat history stays in `/opt/emergency-box/data`
+unless you agree to the prompt to delete `/opt/emergency-box` entirely.
+Homebrew packages are left installed.
 
 ## 9. Design notes
 

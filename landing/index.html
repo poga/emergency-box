@@ -33,16 +33,16 @@
 <p class="tag">You are connected. This network has no internet — it hosts a
 local chat room for everyone nearby.</p>
 
-<div class="card" id="signup">
+<form class="card" id="signup" onsubmit="event.preventDefault(); go();">
   <p class="big">Create your account</p>
   <label for="login">Pick a username</label>
   <input id="login" autocapitalize="none" autocorrect="off"
          placeholder="e.g. maria" maxlength="32">
   <label for="pw">Pick a password (8+ characters)</label>
   <input id="pw" type="password" minlength="8" maxlength="128">
-  <button id="go">Create account</button>
+  <button id="go" type="submit">Create account</button>
   <p id="status"></p>
-</div>
+</form>
 
 <div class="card" id="done">
   <p class="big">✅ Account ready</p>
@@ -95,7 +95,7 @@ async function pollCode(email) {
   throw new Error('No code arrived — the username may be taken.');
 }
 
-$('go').onclick = async () => {
+async function go() {
   const login = $('login').value.trim().toLowerCase();
   const pw = $('pw').value;
   if (!/^[a-z0-9._-]{2,32}$/.test(login)) { status('Username: 2–32 letters/numbers.'); return; }
@@ -118,7 +118,7 @@ $('go').onclick = async () => {
     $('fallback').style.display = 'block';
     $('go').disabled = false;
   }
-};
+}
 </script>
 </body>
 </html>

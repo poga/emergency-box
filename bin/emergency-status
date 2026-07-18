@@ -28,6 +28,6 @@ curl -fsS --max-time 3 -H 'Host: captive.apple.com' http://127.0.0.1/ 2>/dev/nul
   grep -qi emergency && ok "portal serving" || bad "portal not serving"
 dig +short +time=2 +tries=1 probe.example @10.87.0.1 2>/dev/null |
   grep -qx 10.87.0.1 && ok "wildcard DNS answering" || bad "wildcard DNS silent"
-leases=$(grep -c . "$PREFIX/data/dnsmasq.leases" 2>/dev/null || echo 0)
+leases=$(grep -c . "$PREFIX/data/dnsmasq.leases" 2>/dev/null) || leases=0
 echo "  DHCP leases: $leases device(s)"
 exit "$FAILED"

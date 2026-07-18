@@ -34,7 +34,7 @@ start_chatto_stack() { # DIR ; starts real mailpit + chatto
     "COOKIE_SECRET=$(gen_secret)" "CORE_SECRET=$(gen_secret)" \
     "ASSETS_SECRET=$(gen_secret)" "NATS_TOKEN=$(gen_secret)" \
     "DATA_DIR=$dir/data" "SMTP_PORT=1025"
-  (cd "$dir"
+  (cd "$dir" || exit
    chatto run -c "$dir/chatto.toml" >"$dir/chatto.log" 2>&1 &
    echo $! >"$dir/chatto.pid")
   wait_for_url http://127.0.0.1:8080/healthz 30

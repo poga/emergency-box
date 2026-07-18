@@ -15,9 +15,17 @@ for l in dnsmasq caddy chatto mailpit caffeinate; do
   launchctl disable "system/org.emergencybox.$l" 2>/dev/null || true
 done
 bin/emergency-hotspot down 2>/dev/null || true
-svc=$(detect_wifi_service)
-networksetup -setdhcp "$svc"
-networksetup -setdnsservers "$svc" Empty
-pmset -a disablesleep 0
+svc=$(detect_wifi_service 2>/dev/null || true)
+if [ -n "$svc" ]; then
+  networksetup -setdhcp "$svc" || true
+  networksetup -setdnsservers "$svc" Empty || true
+else
+  echo "warning: could not detect wifi service; skipping network restore" >&2
+fi
+pmset -a disablesleep 0 || true
 rm -f /opt/emergency-box/run/active
-echo "Emergency mode off; '$svc' restored to DHCP."
+if [ -n "$svc" ]; then
+  echo "Emergency mode off; '$svc' restored to DHCP."
+else
+  echo "Emergency mode off (network restore skipped)."
+fi
