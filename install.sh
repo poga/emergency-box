@@ -157,8 +157,8 @@ if [ "$SYSTEM" = 1 ]; then
     op_pw=$(openssl rand -base64 12)
     if printf '%s' "$op_pw" | chatto operator \
       -c "$PREFIX/config/chatto.toml" user create \
-      --login operator --password-stdin --verified-email operator@chat.lan; then
-      printf 'login: operator\npassword: %s\n' "$op_pw" \
+      --login boxadmin --password-stdin --verified-email operator@chat.lan; then
+      printf 'login: boxadmin\npassword: %s\n' "$op_pw" \
         >"$PREFIX/config/operator-credentials.txt"
       chmod 600 "$PREFIX/config/operator-credentials.txt"
       chown "$EBOX_USER" "$PREFIX/config/operator-credentials.txt"
