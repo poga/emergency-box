@@ -19,7 +19,9 @@ require_port_free() {
 
 start_chatto_stack() { # DIR ; starts real mailpit + chatto
   local dir=$1
-  require_port_free 8080 && require_port_free 1025 && require_port_free 8025
+  require_port_free 8080 || return 1
+  require_port_free 1025 || return 1
+  require_port_free 8025 || return 1
   mkdir -p "$dir/data"
   chmod 700 "$dir/data" # chatto refuses a group/other-accessible socket dir
   mailpit --smtp 127.0.0.1:1025 --listen 127.0.0.1:8025 \
