@@ -5,6 +5,8 @@ cd "$(dirname "$0")/.."
 source lib/common.sh 2>/dev/null || source /opt/emergency-box/lib/common.sh
 case ${1:-} in
   --help|-h) echo "Usage: emergency-status"; exit 0 ;;
+  '') ;;
+  *) echo "Usage: emergency-status" >&2; exit 2 ;;
 esac
 PREFIX=/opt/emergency-box
 ok() { printf '  [ok] %s\n' "$1"; }

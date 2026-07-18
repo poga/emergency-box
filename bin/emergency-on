@@ -40,10 +40,13 @@ for l in "${daemons[@]}"; do
     2>/dev/null || launchctl kickstart "system/org.emergencybox.$l"
 done
 [ "$NOSLEEP" = 1 ] && pmset -a disablesleep 1
-date > "$PREFIX/run/active"
 
 echo "==> Self-test"
-fail() { echo "SELF-TEST FAILED: $1 (see $PREFIX/log/)" >&2; exit 1; }
+fail() {
+  echo "SELF-TEST FAILED: $1 (see $PREFIX/log/)" >&2
+  echo "Partial start; run 'sudo emergency-off' to roll back." >&2
+  exit 1
+}
 deadline=$((SECONDS + 45))
 until curl -fsS --max-time 2 http://127.0.0.1:8080/healthz >/dev/null 2>&1; do
   ((SECONDS < deadline)) || fail "chatto not healthy on :8080"
@@ -59,6 +62,7 @@ if [ "$HOTSPOT" = 0 ]; then
   dig +short +time=2 +tries=2 "probe$RANDOM.example" @10.87.0.1 |
     grep -qx 10.87.0.1 || fail "wildcard DNS on 10.87.0.1"
 fi
+date > "$PREFIX/run/active"
 
 ssid=$(networksetup -getairportnetwork "$(detect_wifi_device)" |
   sed 's/^[^:]*: //' || true)

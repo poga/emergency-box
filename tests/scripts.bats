@@ -8,9 +8,11 @@
   done
 }
 
-@test "emergency-on rejects unknown flags" {
-  run "$BATS_TEST_DIRNAME/../bin/emergency-on" --bogus
-  [ "$status" -eq 2 ]
+@test "emergency scripts reject unknown flags" {
+  for s in emergency-on emergency-off emergency-status; do
+    run "$BATS_TEST_DIRNAME/../bin/$s" --bogus
+    [ "$status" -eq 2 ]
+  done
 }
 
 @test "wifi detection finds a real device and service" {
