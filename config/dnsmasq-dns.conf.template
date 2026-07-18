@@ -1,0 +1,3 @@
+no-resolv
+no-hosts
+address=/#/@BOX_IP@
