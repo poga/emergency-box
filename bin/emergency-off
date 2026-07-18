@@ -12,6 +12,7 @@ esac
 
 for l in dnsmasq caddy chatto mailpit caffeinate; do
   launchctl bootout "system/org.emergencybox.$l" 2>/dev/null || true
+  launchctl disable "system/org.emergencybox.$l" 2>/dev/null || true
 done
 bin/emergency-hotspot down 2>/dev/null || true
 svc=$(detect_wifi_service)

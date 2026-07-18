@@ -15,10 +15,12 @@ git clone <repo> && cd emergency-box && sudo ./install.sh
 ```
 
 Requires an Apple Silicon Mac and [Homebrew](https://brew.sh) already
-installed. `install.sh` installs dnsmasq/caddy/mailpit/chatto via brew,
-lays out `/opt/emergency-box`, installs 5 dormant launchd daemons, pre-
-authorizes them with the application firewall, and creates the chat
-admin ("operator") account. Credentials are written to
+installed. `install.sh` installs dnsmasq/caddy/mailpit/chatto (plus
+jq, bats-core, shellcheck, bind) via brew, lays out
+`/opt/emergency-box`, installs 5 launchd daemons disabled — enabled
+only while emergency mode is active — pre-authorizes them with the
+application firewall, and creates the chat admin ("operator") account.
+Credentials are written to
 `/opt/emergency-box/config/operator-credentials.txt` — save them
 somewhere safe.
 

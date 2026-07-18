@@ -36,6 +36,7 @@ if [ "$HOTSPOT" = 1 ]; then
   daemons=(chatto mailpit caddy caffeinate)
 fi
 for l in "${daemons[@]}"; do
+  launchctl enable "system/org.emergencybox.$l"
   launchctl bootstrap system "/Library/LaunchDaemons/org.emergencybox.$l.plist" \
     2>/dev/null || launchctl kickstart "system/org.emergencybox.$l"
 done
@@ -44,7 +45,7 @@ done
 echo "==> Self-test"
 fail() {
   echo "SELF-TEST FAILED: $1 (see $PREFIX/log/)" >&2
-  echo "Partial start; run 'sudo emergency-off' to roll back." >&2
+  echo "Partial start; run 'sudo bin/emergency-off' to roll back." >&2
   exit 1
 }
 deadline=$((SECONDS + 45))
@@ -72,5 +73,5 @@ cat <<EOF
   Wifi network : ${ssid:-<join your bridge-mode AP>}
   Chat         : http://chat.lan   (phones: just join the wifi)
   Mail codes   : http://mail.lan
-  Deactivate   : sudo emergency-off
+  Deactivate   : sudo bin/emergency-off
 EOF

@@ -64,6 +64,11 @@ if [ "$SYSTEM" = 1 ]; then
   cp config/org.emergencybox.{dnsmasq,caddy,caffeinate}.plist /Library/LaunchDaemons/
   chown root:wheel /Library/LaunchDaemons/org.emergencybox.*.plist
   chmod 644 /Library/LaunchDaemons/org.emergencybox.*.plist
+  # persistently disable so daemons stay dormant across reboots
+  for l in chatto mailpit dnsmasq caddy caffeinate; do
+    launchctl bootout "system/org.emergencybox.$l" 2>/dev/null || true
+    launchctl disable "system/org.emergencybox.$l"
+  done
   chown -R "$EBOX_USER" "$PREFIX/data" "$PREFIX/log"
 
   echo "==> Pre-authorizing binaries with the application firewall"
@@ -78,7 +83,8 @@ if [ "$SYSTEM" = 1 ]; then
     echo "==> Creating operator (admin) account"
     # clear any stale load from a previous failed attempt
     launchctl bootout system/org.emergencybox.chatto 2>/dev/null || true
-    trap 'launchctl bootout system/org.emergencybox.chatto 2>/dev/null || true' EXIT
+    trap 'launchctl bootout system/org.emergencybox.chatto 2>/dev/null || true; launchctl disable system/org.emergencybox.chatto 2>/dev/null || true' EXIT
+    launchctl enable system/org.emergencybox.chatto
     launchctl bootstrap system /Library/LaunchDaemons/org.emergencybox.chatto.plist
     deadline=$((SECONDS + 60))
     until curl -fsS --max-time 2 http://127.0.0.1:8080/healthz >/dev/null 2>&1; do
@@ -93,6 +99,7 @@ if [ "$SYSTEM" = 1 ]; then
       >"$PREFIX/config/operator-credentials.txt"
     chmod 600 "$PREFIX/config/operator-credentials.txt"
     launchctl bootout system/org.emergencybox.chatto
+    launchctl disable system/org.emergencybox.chatto 2>/dev/null || true
     trap - EXIT
   fi
   echo "Install complete. Activate with: sudo bin/emergency-on"
