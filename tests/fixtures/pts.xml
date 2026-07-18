@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh-TW">
+  <id>https://news.pts.org.tw/xml/newsfeed.xml</id>
+  <title>公視新聞網</title>
+  <entry>
+    <id>https://news.pts.org.tw/article/818266</id>
+    <title>無人機玩家不滿新增禁航區</title>
+    <link href="https://news.pts.org.tw/article/818266"/>
+    <updated>2026-07-19T10:00:00+08:00</updated>
+  </entry>
+  <entry>
+    <id>https://news.pts.org.tw/article/818261</id>
+    <title>堰塞湖預估溢流時間提前</title>
+    <link href="https://news.pts.org.tw/article/818261"/>
+    <updated>2026-07-19T09:00:00+08:00</updated>
+  </entry>
+</feed>
