@@ -1,0 +1,35 @@
+[general]
+log_level = 'info'
+
+[owners]
+emails = ['operator@chat.lan']
+
+[webserver]
+url = 'http://chat.lan'
+port = 8080
+cookie_signing_secret = '@COOKIE_SECRET@'
+
+[operator_api]
+enabled = true
+socket_path = '@DATA_DIR@/operator.sock'
+
+[core]
+secret_key = '@CORE_SECRET@'
+
+[core.assets]
+signing_secret = '@ASSETS_SECRET@'
+
+[auth]
+direct_registration = true
+
+[smtp]
+enabled = true
+host = '127.0.0.1'
+port = @SMTP_PORT@
+tls = 'opportunistic'
+from = 'registration@chat.lan'
+
+[nats.embedded]
+enabled = true
+data_dir = '@DATA_DIR@/nats'
+auth_token = '@NATS_TOKEN@'
