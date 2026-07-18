@@ -60,10 +60,10 @@ IP. Save/reboot the router if it asks.
 ## 4. How people join
 
 1. Phone joins the household wifi like normal.
-2. Go to **http://chat.local/join**, pick a username and password, tap
-   **Create account**.
-3. On success, tap **Open the chat**, then sign in at
-   **http://chat.local**.
+2. Go to **http://chat.local**, tap **Create account** (or **Sign in** if
+   already registered).
+3. Pick a username and password, tap **Create account**. On success, tap
+   **Sign in** and log in with the new account.
 4. Old Android phones/browsers that can't resolve `.local` names: use
    the QR code or `http://<mac-ip>/join` fallback printed on the sign
    (`docs/sign.md`) instead — both the join page and the chat itself

@@ -48,7 +48,7 @@ if [ ! -f "$PREFIX/config/chatto.toml" ]; then
   chmod 600 "$PREFIX/config/chatto.toml"
 fi
 cp config/Caddyfile "$PREFIX/config/Caddyfile"
-cp landing/index.html "$PREFIX/landing/index.html"
+cp landing/index.html landing/welcome.html "$PREFIX/landing/"
 cp lib/common.sh "$PREFIX/lib/common.sh"
 cp bin/status "$PREFIX/bin/status"
 cp services/joind.py services/bonjour.sh "$PREFIX/services/"

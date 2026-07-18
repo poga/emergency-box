@@ -27,6 +27,7 @@ setup_file() {
   [ -x "$PREFIX/services/bonjour.sh" ]
   [ -x "$PREFIX/bin/status" ]
   [ -f "$PREFIX/landing/index.html" ]
+  [ -f "$PREFIX/landing/welcome.html" ]
   [ -f "$PREFIX/lib/common.sh" ]
 }
 

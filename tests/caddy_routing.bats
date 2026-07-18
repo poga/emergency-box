@@ -50,7 +50,15 @@ teardown_file() {
   [ "$output" = "400" ]
 }
 
-@test "chatto UI is the front page" {
-  run curl -s -o /dev/null -w '%{http_code}' "$CADDY_URL/"
+@test "/ serves the welcome page" {
+  run curl -fsS "$CADDY_URL/"
+  [[ "$output" == *"Create account"* ]]
+  [[ "$output" == *"Sign in"* ]]
+}
+
+@test "/login still reaches chatto" {
+  run curl -s -o /dev/null -w '%{http_code}' "$CADDY_URL/login"
   [ "$output" = "200" ]
+  run curl -fsS "$CADDY_URL/login"
+  [[ "$output" != *"Create account"* ]]
 }

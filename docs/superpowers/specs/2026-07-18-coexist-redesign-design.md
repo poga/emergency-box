@@ -45,8 +45,9 @@ Four always-on launchd services (labels `org.emergencybox.{chatto,joind,caddy,bo
   Runs as the installing user — the operator socket is owned by the same
   user chatto runs as; no root anywhere in the request path.
 - **Caddy** (`:80`) — single-origin, path-split routing: `/join*` → portal
-  page (file_server), `/joinapi` → `127.0.0.1:8081/join`, everything else →
-  chatto (UI, `/auth/*`, websockets). Runs as root (port 80).
+  page (file_server), `/joinapi` → `127.0.0.1:8081/join`, exact `/` → welcome
+  page (file_server), everything else → chatto (UI, `/auth/*`, websockets).
+  Runs as root (port 80).
 - **bonjour** — `dns-sd -P` proxy registration publishing `chat.local` →
   the Mac's current IP, as a launchd service. Does not rename the Mac.
   (dns-sd registers while running; KeepAlive restarts it. IP changes are
@@ -54,9 +55,15 @@ Four always-on launchd services (labels `org.emergencybox.{chatto,joind,caddy,bo
 
 **Portal (`/join`)**: same self-contained page, drastically simplified JS —
 one `fetch('/joinapi', {login, password})`, then a success card linking to
-`http://chat.local` ("sign in with your new account"). Errors are plain
+`/login` ("sign in with your new account"). Errors are plain
 words ("that name is taken"). Enter-to-submit kept (addEventListener form
 wiring — never inline handlers; see prior regression).
+
+**Welcome page (`/`)**: a first-time visitor landing at chatto's login has no
+visible signup path (`direct_registration = false` hides it), so the exact
+root path serves a static welcome page instead of proxying to chatto:
+title, tagline, and two links — "Create account" (`/join`) and "Sign in"
+(`/login`, which reaches chatto's normal login UI unchanged).
 
 **Python 3 availability:** install.sh already requires Homebrew, which
 requires the Xcode CLT, which provides `/usr/bin/python3`. joind uses only
@@ -119,9 +126,9 @@ Real processes, no mocks; `./test.sh` = shellcheck + bats.
   joind directly: creates account → real `POST /auth/login` succeeds;
   duplicate login → 409; short password → 400; bad login chars → 400;
   `POST /auth/register` on chatto → 403 (email path closed).
-- **caddy_routing.bats** (updated): `/` serves chatto; `/join` serves the
-  portal HTML; `/joinapi` reaches joind (400 on empty body); websocket
-  upgrade path untouched.
+- **caddy_routing.bats** (updated): `/` serves the welcome page; `/login`
+  still reaches chatto; `/join` serves the portal HTML; `/joinapi` reaches
+  joind (400 on empty body); websocket upgrade path untouched.
 - **install.bats**: unchanged idempotence/permissions coverage, minus
   deleted components; plists lint.
 - **bonjour**: with the publisher running, `dscacheutil -q host -a name

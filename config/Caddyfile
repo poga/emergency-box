@@ -17,6 +17,11 @@ http://:{$EBOX_HTTP_PORT:80} {
 			rewrite * /index.html
 			file_server
 		}
+		handle / {
+			root * {$EBOX_ROOT:/opt/emergency-box}/landing
+			rewrite * /welcome.html
+			file_server
+		}
 		reverse_proxy 127.0.0.1:{$EBOX_CHATTO_PORT:8080}
 	}
 }
