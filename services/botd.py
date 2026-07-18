@@ -154,7 +154,7 @@ def news_cycle(cfg, state, poster, force):
         return
     st["last_run"] = time.time()
     max_items = cfg.getint("news", "max_items")
-    lines = []
+    lines, fresh_by_feed = [], {}
     for feed in cfg.get("news", "feeds").split():
         try:
             items = parse_feed(fetch(feed, state))
@@ -163,13 +163,17 @@ def news_cycle(cfg, state, poster, force):
             continue
         seen = st["seen"].setdefault(feed, [])
         fresh = [i for i in items if i["id"] not in seen]
+        fresh_by_feed[feed] = fresh
         for i in fresh:
             if len(lines) < max_items:
                 lines.append("・%s\n  %s" % (i["title"], i["link"]))
-        seen.extend(i["id"] for i in fresh)
-        del seen[:-500]
     if lines:
         poster.post("📰 新聞更新\n" + "\n".join(lines))
+    # seen commits only after the digest actually posted
+    for feed, fresh in fresh_by_feed.items():
+        seen = st["seen"][feed]
+        seen.extend(i["id"] for i in fresh)
+        del seen[:-500]
 
 
 def _recent(ts):
@@ -192,22 +196,22 @@ def alerts_cycle(cfg, state, poster, force):
     items = parse_feed(fetch(cfg.get("alerts", "feed"), state))
     actual = [i for i in items if i["status"].lower() == "actual"]
     wanted = [i for i in actual if not regions or
-              any(r in i["title"] + i["summary"] for r in regions)]
-    wanted_ids = {i["id"] for i in wanted}
-    if st["bootstrapped"]:
-        to_post = [i for i in wanted if i["id"] not in st["seen"]][:FLOOD_CAP]
-    else:
-        to_post = [i for i in wanted if _recent(i["updated"])][:FLOOD_CAP]
-        st["bootstrapped"] = True
-        wanted_ids = set()  # first run swallows the whole backlog
-    posted_ids = {i["id"] for i in to_post}
-    # overflow stays unseen so the next cycle catches up
-    st["seen"].extend(
-        i["id"] for i in actual if i["id"] not in st["seen"]
-        and (i["id"] in posted_ids or i["id"] not in wanted_ids))
-    del st["seen"][:-2000]
+              any(r in i["title"] + " " + i["summary"] for r in regions)]
+    if not st["bootstrapped"]:
+        wanted = [i for i in wanted if _recent(i["updated"])]
+    to_post = [i for i in wanted if i["id"] not in st["seen"]][:FLOOD_CAP]
+    # ids commit per successful post so a failed post retries next cycle
     for i in reversed(to_post):
         poster.post("🚨【%s】\n%s\n%s" % (i["title"], i["summary"], i["link"]))
+        st["seen"].append(i["id"])
+    if not st["bootstrapped"]:
+        st["seen"].extend(i["id"] for i in actual if i["id"] not in st["seen"])
+        st["bootstrapped"] = True
+    else:
+        st["seen"].extend(i["id"] for i in actual
+                          if i["id"] not in st["seen"]
+                          and i["id"] not in {w["id"] for w in wanted})
+    del st["seen"][:-2000]
 
 
 def connectivity_cycle(cfg, state, poster):

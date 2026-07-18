@@ -201,3 +201,41 @@ teardown_file() {
   wait_for_room_message "$OPTOK" "$aid" "對外網路已恢復" 15
   [ "$(count_body_matches "$OPTOK" "$aid" "對外網路已恢復")" -eq 1 ]
 }
+
+@test "failed posts leave alerts unseen and retry next cycle" {
+  conf4="$BATS_FILE_TMPDIR/bots4.ini"
+  state4="$BATS_FILE_TMPDIR/botd-state4.json"
+  write_bots_ini "$conf4" "$state4"
+  sed -i '' 's/password = botpass123/password = wrongpass123/' "$conf4"
+  aid=$(room_id_by_name "$OPTOK" alerts)
+  before=$(count_body_matches "$OPTOK" "$aid" "突發測試")
+  run python3 "$BATS_TEST_DIRNAME/../services/botd.py" \
+    --config "$conf4" --once
+  [ "$status" -eq 0 ]
+  [ "$(count_body_matches "$OPTOK" "$aid" "突發測試")" -eq "$before" ]
+  sed -i '' 's/password = wrongpass123/password = botpass123/' "$conf4"
+  run python3 "$BATS_TEST_DIRNAME/../services/botd.py" \
+    --config "$conf4" --once
+  [ "$status" -eq 0 ]
+  [ "$(count_body_matches "$OPTOK" "$aid" "突發測試")" -eq $((before + 10)) ]
+}
+
+@test "region keyword posts matching alerts" {
+  source "$BATS_TEST_DIRNAME/../lib/common.sh"
+  ts=$(date -u '+%Y-%m-%dT%H:%M:%S+00:00')
+  render_template "$BATS_TEST_DIRNAME/fixtures/ncdr-1.xml.template" \
+    "$FIXDIR/ncdr.xml" "TS=$ts"
+  conf5="$BATS_FILE_TMPDIR/bots5.ini"
+  state5="$BATS_FILE_TMPDIR/botd-state5.json"
+  write_bots_ini "$conf5" "$state5"
+  sed -i '' 's/^regions =$/regions = 苗栗/' "$conf5"
+  aid=$(room_id_by_name "$OPTOK" alerts)
+  eq_before=$(count_body_matches "$OPTOK" "$aid" "地震")
+  wra_before=$(count_body_matches "$OPTOK" "$aid" "鯉魚潭水庫")
+  run python3 "$BATS_TEST_DIRNAME/../services/botd.py" \
+    --config "$conf5" --once
+  [ "$status" -eq 0 ]
+  wait_for_room_message "$OPTOK" "$aid" "鯉魚潭水庫" 15
+  [ "$(count_body_matches "$OPTOK" "$aid" "鯉魚潭水庫")" -eq $((wra_before + 1)) ]
+  [ "$(count_body_matches "$OPTOK" "$aid" "地震")" -eq "$eq_before" ]
+}
