@@ -61,10 +61,13 @@ if [ "$SYSTEM" = 1 ]; then
   listeners=$(lsof -nP -iTCP:80 -sTCP:LISTEN 2>/dev/null |
     awk 'NR>1{print $1" (pid "$2")"}' | sort -u) || true
   if [ -n "$listeners" ]; then
-    # a re-run finds our own already-installed front door; that's fine
-    if curl -fsS --max-time 5 http://127.0.0.1:80/healthz | grep -q '"ok"' &&
-      curl -fsS --max-time 5 http://127.0.0.1:80/join | grep -qi emergency
-    then
+    # a re-run finds our own daemon on :80 — match by pid, not by health,
+    # since the repair case is exactly when upstream chatto may be down
+    our_pid=$(launchctl print system/org.emergencybox.caddy 2>/dev/null |
+      awk '/pid = /{print $3; exit}' || true)
+    listener_pids=$(lsof -nP -iTCP:80 -sTCP:LISTEN 2>/dev/null |
+      awk 'NR>1{print $2}' | sort -u) || true
+    if [ -n "$our_pid" ] && [ "$listener_pids" = "$our_pid" ]; then
       echo "port 80 already served by emergency-box; continuing"
     else
       {
