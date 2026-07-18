@@ -31,6 +31,8 @@ def take_token():
 
 
 class Handler(BaseHTTPRequestHandler):
+    timeout = 10  # stalling client shouldn't hold a thread forever
+
     def _reply(self, code, obj):
         body = json.dumps(obj).encode()
         self.send_response(code)

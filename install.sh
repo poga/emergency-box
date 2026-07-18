@@ -56,6 +56,20 @@ chmod +x "$PREFIX/bin/status" "$PREFIX/services/joind.py" \
   "$PREFIX/services/bonjour.sh"
 
 if [ "$SYSTEM" = 1 ]; then
+  echo "==> Checking port 80 is free"
+  listeners=$(lsof -nP -iTCP:80 -sTCP:LISTEN 2>/dev/null |
+    awk 'NR>1{print $1" (pid "$2")"}' | sort -u)
+  if [ -n "$listeners" ]; then
+    {
+      echo "port 80 is already in use by: $listeners"
+      echo "emergency-box's own caddy needs port 80 to serve the chat"
+      echo "likely fix: brew services stop caddy"
+      echo "(stops that service only — do NOT uninstall the formula;" \
+        "emergency-box runs its own /opt/homebrew/bin/caddy daemon)"
+    } >&2
+    exit 1
+  fi
+
   chown "$EBOX_USER" "$PREFIX/config/chatto.toml"
   chown -R "$EBOX_USER" "$PREFIX/data" "$PREFIX/log"
 
@@ -93,6 +107,14 @@ if [ "$SYSTEM" = 1 ]; then
     ((SECONDS < deadline)) || { echo "chatto did not start; see $PREFIX/log" >&2; exit 1; }
     sleep 1
   done
+
+  echo "==> Verifying the front door (caddy on :80)"
+  if ! curl -fsS --max-time 5 http://127.0.0.1:80/healthz | grep -q '"ok"' ||
+    ! curl -fsS --max-time 5 http://127.0.0.1:80/join | grep -qi emergency; then
+    echo "caddy is not serving on :80 — check $PREFIX/log/caddy.log" >&2
+    exit 1
+  fi
+
   if [ ! -f "$PREFIX/config/operator-credentials.txt" ]; then
     echo "==> Creating operator (admin) account"
     op_pw=$(openssl rand -base64 12)

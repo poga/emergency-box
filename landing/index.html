@@ -60,7 +60,7 @@ const status = m => { $('status').textContent = m; };
 async function go() {
   const login = $('login').value.trim().toLowerCase();
   const pw = $('pw').value;
-  if (!/^[a-z0-9._-]{2,32}$/.test(login)) { status('Username: 2-32 letters/numbers.'); return; }
+  if (!/^[a-z0-9._-]{2,32}$/.test(login)) { status('Username: 2-32 characters (a-z, 0-9, . _ -).'); return; }
   if (pw.length < 8) { status('Password needs 8+ characters.'); return; }
   $('go').disabled = true;
   status('Creating your account…');

@@ -108,8 +108,8 @@ Removed from the repo (all preserved in git history):
 - chatto down → joind returns 502 "chat server is starting — try again";
   portal shows it and stays retryable.
 - `bin/status` is the single diagnostic entry point.
-- install.sh keeps the operator-bootstrap failure trap (bootout on abort)
-  adapted to the always-on model (service stays up on success).
+- Operator-account creation failure warns and leaves services running;
+  re-running install is idempotent and retries account creation.
 
 ## Testing
 

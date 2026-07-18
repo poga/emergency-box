@@ -51,3 +51,18 @@ setup_file() {
   run "$BATS_TEST_DIRNAME/../install.sh" --prefix /tmp/nope
   [ "$status" -eq 2 ]
 }
+
+@test "all four launchd plists pass plutil -lint" {
+  local tmp
+  tmp=$(mktemp -d)
+  # shellcheck source=lib/common.sh
+  source "$BATS_TEST_DIRNAME/../lib/common.sh"
+  for t in "$BATS_TEST_DIRNAME"/../config/org.emergencybox.*.plist.template; do
+    render_template "$t" "$tmp/$(basename "${t%.template}")" "EBOX_USER=dummy"
+  done
+  cp "$BATS_TEST_DIRNAME/../config/org.emergencybox.caddy.plist" "$tmp/"
+  for p in "$tmp"/org.emergencybox.*.plist; do
+    run plutil -lint "$p"
+    [ "$status" -eq 0 ]
+  done
+}
