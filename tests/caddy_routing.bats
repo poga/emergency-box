@@ -7,16 +7,19 @@ setup_file() {
   export EBOX_TEST_DIR
   EBOX_TEST_DIR=$(mktemp -d)
   start_chatto_stack "$EBOX_TEST_DIR"
-  require_port_free 8081
-  JOIND_CHATTO=$(command -v chatto) \
+  require_port_free 18081
+  JOIND_PORT=18081 \
+    JOIND_CHATTO=$(command -v chatto) \
     JOIND_CONFIG="$EBOX_TEST_DIR/chatto.toml" \
     python3 "$BATS_TEST_DIRNAME/../services/joind.py" \
     >"$EBOX_TEST_DIR/joind.log" 2>&1 &
   echo $! >"$EBOX_TEST_DIR/joind.pid"
   require_port_free 18080
-  EBOX_HTTP_PORT=18080 EBOX_ROOT="$BATS_TEST_DIRNAME/.." \
+  EBOX_HTTP_PORT=18080 EBOX_CHATTO_PORT=18082 EBOX_JOIND_PORT=18081 \
+    EBOX_ROOT="$BATS_TEST_DIRNAME/.." \
     caddy start --config "$BATS_TEST_DIRNAME/../config/Caddyfile" \
-    --adapter caddyfile --pidfile "$EBOX_TEST_DIR/caddy.pid"
+    --adapter caddyfile --pidfile "$EBOX_TEST_DIR/caddy.pid" \
+    >"$EBOX_TEST_DIR/caddy_start.log" 2>&1
   wait_for_url "$CADDY_URL/healthz" 15
 }
 

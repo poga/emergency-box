@@ -17,9 +17,9 @@ require_port_free() {
   fi
 }
 
-start_chatto_stack() { # DIR ; starts a real chatto
+start_chatto_stack() { # DIR ; starts a real chatto on the dedicated test port
   local dir=$1
-  require_port_free 8080 || return 1
+  require_port_free 18082 || return 1
   mkdir -p "$dir/data"
   # chatto refuses a group/other-accessible socket dir
   chmod 700 "$dir/data"
@@ -29,12 +29,12 @@ start_chatto_stack() { # DIR ; starts a real chatto
     "$dir/chatto.toml" \
     "COOKIE_SECRET=$(gen_secret)" "CORE_SECRET=$(gen_secret)" \
     "ASSETS_SECRET=$(gen_secret)" "NATS_TOKEN=$(gen_secret)" \
-    "DATA_DIR=$dir/data"
+    "DATA_DIR=$dir/data" "CHATTO_PORT=18082"
   cd "$dir" || return 1
   chatto run -c "$dir/chatto.toml" >"$dir/chatto.log" 2>&1 &
   echo $! >"$dir/chatto.pid"
   cd - >/dev/null || return 1
-  wait_for_url http://127.0.0.1:8080/healthz 30
+  wait_for_url http://127.0.0.1:18082/healthz 30
 }
 
 stop_chatto_stack() { # DIR ; kills stack, waits for exit so ports free up

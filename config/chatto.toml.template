@@ -6,7 +6,7 @@ emails = ['operator@chat.lan']
 
 [webserver]
 url = 'http://chat.local'
-port = 8080
+port = @CHATTO_PORT@
 cookie_signing_secret = '@COOKIE_SECRET@'
 
 [operator_api]

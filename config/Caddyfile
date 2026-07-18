@@ -10,13 +10,13 @@ http://:{$EBOX_HTTP_PORT:80} {
 	route {
 		handle /joinapi {
 			rewrite * /join
-			reverse_proxy 127.0.0.1:8081
+			reverse_proxy 127.0.0.1:{$EBOX_JOIND_PORT:8081}
 		}
 		handle /join* {
 			root * {$EBOX_ROOT:/opt/emergency-box}/landing
 			rewrite * /index.html
 			file_server
 		}
-		reverse_proxy 127.0.0.1:8080
+		reverse_proxy 127.0.0.1:{$EBOX_CHATTO_PORT:8080}
 	}
 }

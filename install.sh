@@ -44,7 +44,7 @@ if [ ! -f "$PREFIX/config/chatto.toml" ]; then
   render_template config/chatto.toml.template "$PREFIX/config/chatto.toml" \
     "COOKIE_SECRET=$(gen_secret)" "CORE_SECRET=$(gen_secret)" \
     "ASSETS_SECRET=$(gen_secret)" "NATS_TOKEN=$(gen_secret)" \
-    "DATA_DIR=$PREFIX/data"
+    "DATA_DIR=$PREFIX/data" "CHATTO_PORT=8080"
   chmod 600 "$PREFIX/config/chatto.toml"
 fi
 cp config/Caddyfile "$PREFIX/config/Caddyfile"

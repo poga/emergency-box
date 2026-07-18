@@ -39,6 +39,6 @@
       grep -q ip_address && { resolved=0; break; }
     sleep 0.5
   done
-  kill "$pid" 2>/dev/null || true
+  kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
   [ "$resolved" -eq 0 ]
 }

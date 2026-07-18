@@ -1,14 +1,15 @@
 #!/usr/bin/env bats
 load helpers
 
-JOIND=http://127.0.0.1:8081
+JOIND=http://127.0.0.1:18081
 
 setup_file() {
   export EBOX_TEST_DIR
   EBOX_TEST_DIR=$(mktemp -d)
   start_chatto_stack "$EBOX_TEST_DIR"
-  require_port_free 8081
-  JOIND_CHATTO=$(command -v chatto) \
+  require_port_free 18081
+  JOIND_PORT=18081 \
+    JOIND_CHATTO=$(command -v chatto) \
     JOIND_CONFIG="$EBOX_TEST_DIR/chatto.toml" \
     python3 "$BATS_TEST_DIRNAME/../services/joind.py" \
     >"$EBOX_TEST_DIR/joind.log" 2>&1 &
@@ -30,7 +31,7 @@ teardown_file() {
     -H 'Content-Type: application/json' \
     -d '{"login":"joinuser","password":"emergency123"}'
   [ "$output" = "201" ]
-  run curl -fsS -X POST http://127.0.0.1:8080/auth/login \
+  run curl -fsS -X POST http://127.0.0.1:18082/auth/login \
     -H 'Content-Type: application/json' \
     -d '{"login":"joinuser","password":"emergency123"}'
   echo "$output" | jq -e '.user.login == "joinuser"'
@@ -61,7 +62,7 @@ teardown_file() {
 
 @test "chatto email registration path is closed" {
   run curl -s -o /dev/null -w '%{http_code}' -X POST \
-    http://127.0.0.1:8080/auth/register -H 'Content-Type: application/json' \
+    http://127.0.0.1:18082/auth/register -H 'Content-Type: application/json' \
     -d '{"email":"x@chat.lan"}'
   [ "$output" = "403" ]
 }

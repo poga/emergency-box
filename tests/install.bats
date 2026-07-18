@@ -14,6 +14,7 @@ setup_file() {
   [ "$s" -ge 4 ]
   grep -q 'direct_registration = false' "$PREFIX/config/chatto.toml"
   ! grep -q '\[smtp\]' "$PREFIX/config/chatto.toml"
+  grep -q 'port = 8080' "$PREFIX/config/chatto.toml"
 }
 
 @test "chatto.toml is not world readable" {
