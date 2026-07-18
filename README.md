@@ -24,9 +24,9 @@ git clone <repo> && cd emergency-box && sudo ./install.sh
 Requires an Apple Silicon Mac and [Homebrew](https://brew.sh) already
 installed. `install.sh` installs caddy and chatto (plus jq, bats-core,
 shellcheck for testing) via brew, lays out `/opt/emergency-box`,
-installs and starts 4 always-on launchd services, pre-authorizes them
-with the application firewall, and creates the chat admin ("operator")
-account. Credentials are written to
+installs and starts 4 always-on launchd services, pre-authorizes caddy
+and chatto with the application firewall, and creates the chat admin
+("operator") account. Credentials are written to
 `/opt/emergency-box/config/operator-credentials.txt` — save them
 somewhere safe. Internet is only needed for this one step.
 
@@ -38,9 +38,9 @@ After install:
 ## 3. Set a DHCP reservation
 
 One-time router step. The Mac's IP can change over time (e.g. after a
-router reboot), and the printed sign (section 4, `docs/sign.md`) has a
-fallback link baked in as plain text — a DHCP reservation keeps that
-fallback valid indefinitely instead of going stale.
+router reboot), and the printed sign (`docs/sign.md`) has a fallback
+link baked in as plain text — a DHCP reservation keeps that fallback
+valid indefinitely instead of going stale.
 
 Find the Mac's current wifi IP and MAC address:
 

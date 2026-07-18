@@ -5,7 +5,7 @@ log_level = 'info'
 emails = ['operator@chat.lan']
 
 [webserver]
-url = 'http://chat.lan'
+url = 'http://chat.local'
 port = 8080
 cookie_signing_secret = '@COOKIE_SECRET@'
 

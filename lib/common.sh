@@ -18,10 +18,3 @@ detect_wifi_device() {
   networksetup -listallhardwareports |
     awk '/Hardware Port: Wi-Fi/{getline; print $2; exit}'
 }
-
-detect_wifi_service() {
-  local dev
-  dev=$(detect_wifi_device)
-  networksetup -listnetworkserviceorder |
-    grep -B1 "Device: ${dev})" | head -1 | sed 's/^([0-9*]*) //'
-}
