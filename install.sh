@@ -134,8 +134,20 @@ if [ "$SYSTEM" = 1 ]; then
   done
 
   echo "==> Verifying the front door (caddy on :80)"
-  if ! curl -fsS --max-time 5 http://127.0.0.1:80/healthz | grep -q '"ok"' ||
-    ! curl -fsS --max-time 5 http://127.0.0.1:80/join | grep -qi emergency; then
+  frontdoor=1
+  deadline=$((SECONDS + 30))
+  while ((SECONDS < deadline)); do
+    if curl -fsS --max-time 5 http://127.0.0.1:80/healthz 2>/dev/null |
+        grep -q '"ok"' &&
+      curl -fsS --max-time 5 http://127.0.0.1:80/join 2>/dev/null |
+        grep -qi emergency
+    then
+      frontdoor=0
+      break
+    fi
+    sleep 1
+  done
+  if [ "$frontdoor" -ne 0 ]; then
     echo "caddy is not serving on :80 — check $PREFIX/log/caddy.log" >&2
     exit 1
   fi
