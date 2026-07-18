@@ -74,6 +74,9 @@ if [ "$SYSTEM" = 1 ]; then
 
   if [ ! -f "$PREFIX/config/operator-credentials.txt" ]; then
     echo "==> Creating operator (admin) account"
+    # clear any stale load from a previous failed attempt
+    launchctl bootout system/org.emergencybox.chatto 2>/dev/null || true
+    trap 'launchctl bootout system/org.emergencybox.chatto 2>/dev/null || true' EXIT
     launchctl bootstrap system /Library/LaunchDaemons/org.emergencybox.chatto.plist
     deadline=$((SECONDS + 60))
     until curl -fsS --max-time 2 http://127.0.0.1:8080/healthz >/dev/null 2>&1; do
@@ -88,6 +91,7 @@ if [ "$SYSTEM" = 1 ]; then
       >"$PREFIX/config/operator-credentials.txt"
     chmod 600 "$PREFIX/config/operator-credentials.txt"
     launchctl bootout system/org.emergencybox.chatto
+    trap - EXIT
   fi
   echo "Install complete. Activate with: sudo bin/emergency-on"
 else
