@@ -14,12 +14,13 @@ for l in chatto joind caddy bonjour; do
   launchctl print "system/org.emergencybox.$l" >/dev/null 2>&1 &&
     ok "daemon $l loaded" || bad "daemon $l not loaded"
 done
-curl -fsS --max-time 3 http://127.0.0.1:8080/healthz >/dev/null 2>&1 &&
-  ok "chatto healthy" || bad "chatto not responding"
+curl -fsS --max-time 3 http://127.0.0.1:8080/healthz 2>/dev/null |
+  grep -q '"ok"' && ok "chatto healthy" || bad "chatto not responding"
 code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 \
   http://127.0.0.1:8081/join 2>/dev/null || true)
 [ "$code" = "405" ] && ok "joind healthy" || bad "joind not responding"
-curl -fsS --max-time 3 http://127.0.0.1:80/healthz >/dev/null 2>&1 &&
+curl -fsS --max-time 3 http://127.0.0.1:80/healthz 2>/dev/null |
+  grep -q '"ok"' &&
   ok "caddy serving chatto on :80" || bad "caddy not serving on :80"
 curl -fsS --max-time 3 http://127.0.0.1:80/join 2>/dev/null |
   grep -qi emergency && ok "portal at /join" || bad "portal not serving"
