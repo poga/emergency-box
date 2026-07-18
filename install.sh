@@ -57,17 +57,25 @@ chmod +x "$PREFIX/bin/status" "$PREFIX/services/joind.py" \
 
 if [ "$SYSTEM" = 1 ]; then
   echo "==> Checking port 80 is free"
+  # lsof exits 1 (no match) when the port is free; that's not our error
   listeners=$(lsof -nP -iTCP:80 -sTCP:LISTEN 2>/dev/null |
-    awk 'NR>1{print $1" (pid "$2")"}' | sort -u)
+    awk 'NR>1{print $1" (pid "$2")"}' | sort -u) || true
   if [ -n "$listeners" ]; then
-    {
-      echo "port 80 is already in use by: $listeners"
-      echo "emergency-box's own caddy needs port 80 to serve the chat"
-      echo "likely fix: brew services stop caddy"
-      echo "(stops that service only — do NOT uninstall the formula;" \
-        "emergency-box runs its own /opt/homebrew/bin/caddy daemon)"
-    } >&2
-    exit 1
+    # a re-run finds our own already-installed front door; that's fine
+    if curl -fsS --max-time 5 http://127.0.0.1:80/healthz | grep -q '"ok"' &&
+      curl -fsS --max-time 5 http://127.0.0.1:80/join | grep -qi emergency
+    then
+      echo "port 80 already served by emergency-box; continuing"
+    else
+      {
+        echo "port 80 is already in use by: $listeners"
+        echo "emergency-box's own caddy needs port 80 to serve the chat"
+        echo "likely fix: brew services stop caddy"
+        echo "(stops that service only — do NOT uninstall the formula;" \
+          "emergency-box runs its own /opt/homebrew/bin/caddy daemon)"
+      } >&2
+      exit 1
+    fi
   fi
 
   chown "$EBOX_USER" "$PREFIX/config/chatto.toml"
