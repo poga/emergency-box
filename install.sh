@@ -67,11 +67,18 @@ if [ "$SYSTEM" = 1 ]; then
   cp config/org.emergencybox.caddy.plist /Library/LaunchDaemons/
   chown root:wheel /Library/LaunchDaemons/org.emergencybox.*.plist
   chmod 644 /Library/LaunchDaemons/org.emergencybox.*.plist
+  failed=""
   for l in chatto joind caddy bonjour; do
     launchctl bootout "system/org.emergencybox.$l" 2>/dev/null || true
     launchctl enable "system/org.emergencybox.$l" 2>/dev/null || true
-    launchctl bootstrap system "/Library/LaunchDaemons/org.emergencybox.$l.plist"
+    launchctl bootstrap system "/Library/LaunchDaemons/org.emergencybox.$l.plist" ||
+      failed="$failed $l"
   done
+  if [ -n "$failed" ]; then
+    echo "failed to start:$failed — check /Library/LaunchDaemons and" \
+      "$PREFIX/log, then re-run sudo ./install.sh" >&2
+    exit 1
+  fi
 
   echo "==> Pre-authorizing binaries with the application firewall"
   fw=/usr/libexec/ApplicationFirewall/socketfilterfw
@@ -100,13 +107,16 @@ if [ "$SYSTEM" = 1 ]; then
       echo "WARNING: operator account creation failed; re-run install" >&2
     fi
   fi
+  op_status="NOT CREATED - re-run sudo ./install.sh"
+  [ -f "$PREFIX/config/operator-credentials.txt" ] &&
+    op_status="$PREFIX/config/operator-credentials.txt"
   cat <<EOF
 
 Install complete — the chat is live and survives reboots.
   Chat     : http://chat.local
   Sign up  : http://chat.local/join
   Status   : $PREFIX/bin/status
-  Admin    : $PREFIX/config/operator-credentials.txt
+  Admin    : $op_status
 Reserve this Mac's IP in your router's DHCP settings so the printed
 QR fallback stays valid.
 EOF
