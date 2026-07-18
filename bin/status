@@ -10,7 +10,7 @@ ok() { printf '  [ok] %s\n' "$1"; }
 bad() { printf '  [!!] %s\n' "$1"; FAILED=1; }
 FAILED=0
 
-for l in chatto joind caddy bonjour; do
+for l in chatto joind caddy bonjour botd; do
   launchctl print "system/org.emergencybox.$l" >/dev/null 2>&1 &&
     ok "daemon $l loaded" || bad "daemon $l not loaded"
 done

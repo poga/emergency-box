@@ -22,9 +22,21 @@ setup_file() {
   [ "$perms" = "600" ]
 }
 
+@test "renders bots.ini with distinct secrets, private" {
+  grep -q 'name = 台北' "$PREFIX/config/bots.ini"
+  n=$(grep -oE 'password = [0-9a-f]{32}' "$PREFIX/config/bots.ini" |
+    sort -u | wc -l)
+  [ "$n" -eq 3 ]
+  perms=$(stat -f '%Lp' "$PREFIX/config/bots.ini")
+  [ "$perms" = "600" ]
+}
+
 @test "services and portal installed" {
   [ -x "$PREFIX/services/joind.py" ]
   [ -x "$PREFIX/services/bonjour.sh" ]
+  [ -x "$PREFIX/services/seed.py" ]
+  [ -x "$PREFIX/services/botd.py" ]
+  [ -f "$PREFIX/services/chatto_api.py" ]
   [ -x "$PREFIX/bin/status" ]
   [ -f "$PREFIX/landing/index.html" ]
   [ -f "$PREFIX/landing/welcome.html" ]
@@ -43,10 +55,13 @@ setup_file() {
 
 @test "install is idempotent and keeps existing secrets" {
   before=$(grep cookie_signing_secret "$PREFIX/config/chatto.toml")
+  bots_before=$(grep 'password = ' "$PREFIX/config/bots.ini")
   run "$BATS_TEST_DIRNAME/../install.sh" --prefix "$PREFIX" --no-system
   [ "$status" -eq 0 ]
   after=$(grep cookie_signing_secret "$PREFIX/config/chatto.toml")
   [ "$before" = "$after" ]
+  bots_after=$(grep 'password = ' "$PREFIX/config/bots.ini")
+  [ "$bots_before" = "$bots_after" ]
 }
 
 @test "custom prefix is refused for system installs" {
@@ -54,7 +69,7 @@ setup_file() {
   [ "$status" -eq 2 ]
 }
 
-@test "all four launchd plists pass plutil -lint" {
+@test "all five launchd plists pass plutil -lint" {
   local tmp
   tmp=$(mktemp -d)
   # shellcheck source=lib/common.sh

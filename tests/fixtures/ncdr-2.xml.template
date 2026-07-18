@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:cap="urn:oasis:names:tc:emergency:cap:1.1">
+  <id>https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx</id>
+  <title>NCDR示警公開資料平台</title>
+  <entry>
+    <id>CWA_Earthquake_TEST_0001</id>
+    <title>地震</title>
+    <updated>@TS@</updated>
+    <link href="https://example.com/cap/eq1"/>
+    <summary>臺北市 有感地震，規模5.1，深度10公里</summary>
+    <cap:status>Actual</cap:status>
+  </entry>
+  <entry>
+    <id>WRA_ReservoirWarn_TEST_0002</id>
+    <title>水庫放流</title>
+    <updated>@TS@</updated>
+    <link href="https://example.com/cap/wra2"/>
+    <summary>鯉魚潭水庫洩洪，影響範圍:苗栗縣</summary>
+    <cap:status>Actual</cap:status>
+  </entry>
+  <entry>
+    <id>CWA_Typhoon_OLD_0003</id>
+    <title>颱風</title>
+    <updated>2020-01-01T00:00:00+08:00</updated>
+    <link href="https://example.com/cap/old3"/>
+    <summary>過期的歷史警報</summary>
+    <cap:status>Actual</cap:status>
+  </entry>
+  <entry>
+    <id>CWA_Exercise_TEST_0004</id>
+    <title>演習</title>
+    <updated>@TS@</updated>
+    <link href="https://example.com/cap/ex4"/>
+    <summary>非實際警報</summary>
+    <cap:status>Exercise</cap:status>
+  </entry>
+  <entry>
+    <id>CWA_Typhoon_NEW_0005</id>
+    <title>颱風</title>
+    <updated>@TS@</updated>
+    <link href="https://example.com/cap/ty5"/>
+    <summary>颱風海上警報，影響範圍:臺灣北部海面</summary>
+    <cap:status>Actual</cap:status>
+  </entry>
+</feed>

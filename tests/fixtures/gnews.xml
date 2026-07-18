@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>焦點新聞 - Google 新聞</title>
+    <item>
+      <title>測試頭條一</title>
+      <link>https://example.com/n1</link>
+      <guid isPermaLink="false">gnews-item-1</guid>
+      <pubDate>Sat, 19 Jul 2026 02:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>測試頭條二</title>
+      <link>https://example.com/n2</link>
+      <guid isPermaLink="false">gnews-item-2</guid>
+      <pubDate>Sat, 19 Jul 2026 01:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

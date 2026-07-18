@@ -49,3 +49,45 @@ stop_chatto_stack() { # DIR ; kills stack, waits for exit so ports free up
     done
   done
 }
+
+create_operator() { # DIR ; operator user + credentials file for the test stack
+  printf 'testoppass123' | chatto operator -c "$1/chatto.toml" user create \
+    --login boxadmin --password-stdin --verified-email operator@chat.lan \
+    >/dev/null
+  printf 'login: boxadmin\npassword: testoppass123\n' \
+    >"$1/operator-credentials.txt"
+}
+
+chatto_token() { # LOGIN PASSWORD ; prints a bearer token for the test chatto
+  curl -sf -X POST http://127.0.0.1:18082/auth/login \
+    -H 'Content-Type: application/json' \
+    -d "{\"login\":\"$1\",\"password\":\"$2\"}" | jq -r .token
+}
+
+chatto_rpc() { # TOKEN SERVICE METHOD JSON
+  curl -s -H "Authorization: Bearer $1" -H 'Content-Type: application/json' \
+    -X POST "http://127.0.0.1:18082/api/connect/$2/$3" -d "$4"
+}
+
+room_id_by_name() { # TOKEN NAME
+  chatto_rpc "$1" chatto.api.v1.RoomDirectoryService ListRooms '{}' |
+    jq -r --arg n "$2" '.rooms[].room | select(.name==$n) | .id'
+}
+
+count_body_matches() { # TOKEN ROOM_ID PATTERN ; messages whose body contains it
+  chatto_rpc "$1" chatto.api.v1.RoomService GetRoomEvents \
+    "{\"roomId\":\"$2\"}" |
+    jq --arg p "$3" \
+      '[.page.events[].messagePosted.message.body // empty
+        | select(contains($p))] | length'
+}
+
+wait_for_room_message() { # TOKEN ROOM_ID PATTERN DEADLINE_SECS
+  local deadline=$((SECONDS + $4))
+  while ((SECONDS < deadline)); do
+    [ "$(count_body_matches "$1" "$2" "$3")" -ge 1 ] && return 0
+    sleep 0.5
+  done
+  echo "timeout waiting for message matching: $3" >&2
+  return 1
+}

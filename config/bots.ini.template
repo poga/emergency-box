@@ -1,0 +1,34 @@
+[botd]
+chatto_url = http://127.0.0.1:8080
+state_file = @STATE_FILE@
+tick = 30
+offline_after = 600
+
+[location]
+name = 台北
+latitude = 25.04
+longitude = 121.51
+
+[weather]
+login = weatherbot
+password = @WEATHER_PASSWORD@
+room = weather
+post_times = 07:00,17:00
+url = https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=Asia%2FTaipei&forecast_days=2
+
+[news]
+login = newsbot
+password = @NEWS_PASSWORD@
+room = news
+interval = 3600
+max_items = 10
+feeds = https://news.pts.org.tw/xml/newsfeed.xml
+    https://news.google.com/rss?hl=zh-TW&gl=TW&ceid=TW:zh-Hant
+
+[alerts]
+login = alertbot
+password = @ALERT_PASSWORD@
+room = alerts
+interval = 300
+regions =
+feed = https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx
