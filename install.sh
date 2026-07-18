@@ -47,13 +47,23 @@ if [ ! -f "$PREFIX/config/chatto.toml" ]; then
     "DATA_DIR=$PREFIX/data" "CHATTO_PORT=8080"
   chmod 600 "$PREFIX/config/chatto.toml"
 fi
+if [ ! -f "$PREFIX/config/bots.ini" ]; then
+  render_template config/bots.ini.template "$PREFIX/config/bots.ini" \
+    "WEATHER_PASSWORD=$(openssl rand -hex 16)" \
+    "NEWS_PASSWORD=$(openssl rand -hex 16)" \
+    "ALERT_PASSWORD=$(openssl rand -hex 16)" \
+    "STATE_FILE=$PREFIX/data/botd-state.json"
+  chmod 600 "$PREFIX/config/bots.ini"
+fi
 cp config/Caddyfile "$PREFIX/config/Caddyfile"
 cp landing/index.html landing/welcome.html "$PREFIX/landing/"
 cp lib/common.sh "$PREFIX/lib/common.sh"
 cp bin/status "$PREFIX/bin/status"
-cp services/joind.py services/bonjour.sh "$PREFIX/services/"
+cp services/joind.py services/bonjour.sh services/chatto_api.py \
+  services/seed.py services/botd.py "$PREFIX/services/"
 chmod +x "$PREFIX/bin/status" "$PREFIX/services/joind.py" \
-  "$PREFIX/services/bonjour.sh"
+  "$PREFIX/services/bonjour.sh" "$PREFIX/services/seed.py" \
+  "$PREFIX/services/botd.py"
 
 if [ "$SYSTEM" = 1 ]; then
   echo "==> Checking port 80 is free"
@@ -81,7 +91,7 @@ if [ "$SYSTEM" = 1 ]; then
     fi
   fi
 
-  chown "$EBOX_USER" "$PREFIX/config/chatto.toml"
+  chown "$EBOX_USER" "$PREFIX/config/chatto.toml" "$PREFIX/config/bots.ini"
   chown -R "$EBOX_USER" "$PREFIX/data" "$PREFIX/log"
 
   echo "==> Installing always-on launchd services"
@@ -93,7 +103,7 @@ if [ "$SYSTEM" = 1 ]; then
   chown root:wheel /Library/LaunchDaemons/org.emergencybox.*.plist
   chmod 644 /Library/LaunchDaemons/org.emergencybox.*.plist
   failed=""
-  for l in chatto joind caddy bonjour; do
+  for l in chatto joind caddy bonjour botd; do
     launchctl bootout "system/org.emergencybox.$l" 2>/dev/null || true
     # bootout is async; bootstrapping mid-teardown fails with EIO
     deadline=$((SECONDS + 20))
@@ -166,6 +176,37 @@ if [ "$SYSTEM" = 1 ]; then
       echo "WARNING: operator account creation failed; re-run install" >&2
     fi
   fi
+
+  echo "==> Creating bot accounts"
+  bot_pw() {
+    python3 - "$PREFIX/config/bots.ini" "$1" <<'PY'
+import configparser, sys
+c = configparser.ConfigParser(interpolation=None)
+c.read(sys.argv[1])
+print(c[sys.argv[2]]["password"])
+PY
+  }
+  existing=$(chatto operator -c "$PREFIX/config/chatto.toml" user list \
+    --json 2>/dev/null || echo '{}')
+  for spec in "weather:weatherbot:天氣機器人" "news:newsbot:新聞機器人" \
+    "alerts:alertbot:警報機器人"; do
+    sec=${spec%%:*} rest=${spec#*:}
+    login=${rest%%:*} display=${rest#*:}
+    if ! printf '%s' "$existing" |
+      jq -e --arg l "$login" '[.. | .login? // empty] | index($l)' \
+        >/dev/null; then
+      bot_pw "$sec" | chatto operator -c "$PREFIX/config/chatto.toml" \
+        user create --login "$login" --password-stdin \
+        --display-name "$display" ||
+        echo "WARNING: could not create bot user $login" >&2
+    fi
+  done
+
+  echo "==> Seeding channels"
+  python3 "$PREFIX/services/seed.py" --url http://127.0.0.1:8080 \
+    --credentials "$PREFIX/config/operator-credentials.txt" ||
+    echo "WARNING: channel seeding failed; re-run sudo ./install.sh" >&2
+
   op_status="NOT CREATED - re-run sudo ./install.sh"
   [ -f "$PREFIX/config/operator-credentials.txt" ] &&
     op_status="$PREFIX/config/operator-credentials.txt"

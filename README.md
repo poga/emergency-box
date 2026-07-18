@@ -40,6 +40,20 @@ the chat admin account — credentials land in
   server) — deliberately out of scope. Instead, record a clip with the
   camera app and attach it in chat; videos up to 25 MB play inline.
 
+## Channels & bots
+
+Installs seed a Chinese channel lineup: 大廳 (#announcements —
+moderator-only, #chat), 緊急互助 (#help, #supplies, #civil-defense), and
+資訊 where bots post — #weather (Open-Meteo, 07:00/17:00), #news (公視 +
+Google News hourly), #alerts (NCDR official alerts, every 5 min). All
+sources are keyless. When the internet dies the bots go quiet and the
+channel history is your last-known-info cache; #alerts gets a one-time
+⚠️ offline notice.
+
+Change the city: edit `[location]` in
+`/opt/emergency-box/config/bots.ini`, then
+`sudo launchctl kickstart -k system/org.emergencybox.botd`.
+
 **One-time router step:** give the Mac a DHCP reservation so the
 printed IP fallback never goes stale. Find its wifi IP + MAC:
 

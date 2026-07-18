@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "run with sudo" >&2; exit 1; }
-for l in chatto joind caddy bonjour; do
+for l in chatto joind caddy bonjour botd; do
   launchctl bootout "system/org.emergencybox.$l" 2>/dev/null || true
   rm -f "/Library/LaunchDaemons/org.emergencybox.$l.plist"
 done
