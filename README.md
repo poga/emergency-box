@@ -1,17 +1,12 @@
 # Emergency Box
 
-A chat room that lives on your wifi and keeps working when the internet
-dies. An Apple Silicon Mac runs the chat ([chatto](https://github.com/chattocorp/chatto))
-on your normal home network — the router is never reconfigured, and
-there is nothing to switch on in an emergency. People use it every day
-at **http://chat.local**, so they already know how to reach it when it
-matters. As long as the router and the Mac have power, the chat works.
+A chat room that lives on your wifi and keeps working when the internet dies.
 
 ![The Emergency Chat overview at chat.local — the 大廳, 緊急互助, and 資訊 channel groups in the Chatto web UI](docs/images/chatto-overview.jpg)
 
 ## Install (once, needs internet)
 
-Requires an Apple Silicon Mac with [Homebrew](https://brew.sh).
+Currently requires an Apple Silicon Mac with [Homebrew](https://brew.sh).
 
 ```bash
 git clone <repo> && cd emergency-box && sudo ./install.sh
@@ -28,46 +23,32 @@ the chat admin account — credentials land in
 ## Use it
 
 - **Chat:** http://chat.local — **Sign up:** http://chat.local/join
-- New people: join the wifi, open **chat.local**, tap **Create
-  account**, pick a name and password, then **Sign in**.
-- Old Android phones that can't resolve `.local`: use the QR / plain-IP
-  fallback (`http://<mac-ip>/join`) printed on the sign
-  ([docs/sign.md](docs/sign.md)) — everything works the same over IP.
-- **When the internet dies: do nothing.** Keep the Mac plugged in and
-  awake (`caffeinate -s` in a terminal, or lid open) — a sleeping Mac
-  is a sleeping chat room.
-- **No live voice/video calls.** Browsers only allow mic/camera access
-  over HTTPS, which on an offline LAN would mean installing a custom
-  certificate on every phone (and running a separate LiveKit media
-  server) — deliberately out of scope. Instead, record a clip with the
-  camera app and attach it in chat; videos up to 25 MB play inline.
+- New people: join the wifi, open **chat.local**, tap **Create account**, pick a name and password, then **Sign in**.
+- Old Android phones that can't resolve `.local`: use the QR / plain-IP fallback (`http://<mac-ip>/join`) printed on the sign ([docs/sign.md](docs/sign.md)) — everything works the same over IP.
+- **When the internet dies.** Keep the Mac plugged in and awake (`caffeinate -s` in a terminal, or lid open)
+- **No live voice/video calls.** Browsers only allow mic/camera access over HTTPS, which on an offline LAN would mean installing a custom certificate on every phone (and running a separate LiveKit media server) — deliberately out of scope. Instead, record a clip with the camera app and attach it in chat; videos up to 25 MB play inline.
 
 ## Channels & bots
 
-Installs seed a Chinese channel lineup: 大廳 (#announcements —
-moderator-only, #chat), 緊急互助 (#help, #supplies, #civil-defense), and
-資訊 where bots post — #weather (Open-Meteo, 07:00/17:00), #news (公視 +
-Google News hourly), #alerts (NCDR official alerts, every 5 min). All
-sources are keyless. When the internet dies the bots go quiet and the
-channel history is your last-known-info cache; #alerts gets a one-time
-⚠️ offline notice.
+The chatto comes with default channels and bots, gathering info when there's intermittent internet connection:
+
+- 大廳
+  - #announcements
+  - #chat
+- 緊急互助
+  - #help
+  - #supplies
+  - #civil-defense
+- 資訊
+  - #weather (Open-Meteo, 07:00/17:00)
+  - #news (公視 + Google News hourly)
+  - #alerts (NCDR official alerts, every 5 min). All
 
 ![The #news channel — 新聞機器人 auto-posting 公視 headlines with links](docs/images/chatto-news.jpg)
 
 Change the city: edit `[location]` in
 `/opt/emergency-box/config/bots.ini`, then
 `sudo launchctl kickstart -k system/org.emergencybox.botd`.
-
-**One-time router step:** give the Mac a DHCP reservation so the
-printed IP fallback never goes stale. Find its wifi IP + MAC:
-
-```bash
-dev=$(networksetup -listallhardwareports | awk '/Hardware Port: Wi-Fi/{getline; print $2; exit}')
-ipconfig getifaddr "$dev"
-networksetup -getmacaddress "$dev"
-```
-
-then bind them in the router's DHCP reservation / static lease setting.
 
 ## Verify it works (once, end-to-end)
 
@@ -96,6 +77,17 @@ then bind them in the router's DHCP reservation / static lease setting.
 - **chat.local not resolving** — check
   `/opt/emergency-box/log/bonjour.log`; on old Androids this is
   expected — use the IP fallback from the sign.
+
+**One-time router step:** give the Mac a DHCP reservation so the
+printed IP fallback never goes stale. Find its wifi IP + MAC:
+
+```bash
+dev=$(networksetup -listallhardwareports | awk '/Hardware Port: Wi-Fi/{getline; print $2; exit}')
+ipconfig getifaddr "$dev"
+networksetup -getmacaddress "$dev"
+```
+
+then bind them in the router's DHCP reservation / static lease setting.
 
 ## Uninstall
 
