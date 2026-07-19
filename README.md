@@ -7,6 +7,8 @@ there is nothing to switch on in an emergency. People use it every day
 at **http://chat.local**, so they already know how to reach it when it
 matters. As long as the router and the Mac have power, the chat works.
 
+![The Emergency Chat overview at chat.local — the 大廳, 緊急互助, and 資訊 channel groups in the Chatto web UI](docs/images/chatto-overview.jpg)
+
 ## Install (once, needs internet)
 
 Requires an Apple Silicon Mac with [Homebrew](https://brew.sh).
@@ -49,6 +51,8 @@ Google News hourly), #alerts (NCDR official alerts, every 5 min). All
 sources are keyless. When the internet dies the bots go quiet and the
 channel history is your last-known-info cache; #alerts gets a one-time
 ⚠️ offline notice.
+
+![The #news channel — 新聞機器人 auto-posting 公視 headlines with links](docs/images/chatto-news.jpg)
 
 Change the city: edit `[location]` in
 `/opt/emergency-box/config/bots.ini`, then
