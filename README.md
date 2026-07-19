@@ -102,8 +102,3 @@ unless you accept the delete prompt. Brew packages are left installed.
 
 - [current design — always-on, coexists with normal wifi](docs/superpowers/specs/2026-07-18-coexist-redesign-design.md)
 - [superseded — the earlier network-takeover design](docs/superpowers/specs/2026-07-18-emergency-box-design.md)
-
-## License
-
-[AGPL-3.0](LICENSE) — fork it and adapt it for your own community; if you
-run a modified version for others, share your changes back.
